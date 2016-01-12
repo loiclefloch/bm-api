@@ -1,0 +1,8 @@
+NelmioApiDocBundle:
+    resource:       "@NelmioApiDocBundle/Resources/config/routing.yml"
+    prefix:         /doc/routes
+
+
+documentation:
+    prefix:         /doc
+    resource:       BookmarkManager\ApiBundle\Controller\DocumentationController

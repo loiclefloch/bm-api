@@ -1,0 +1,20 @@
+user:
+    type:           rest
+    resource:       BookmarkManager\ApiBundle\Controller\UserController
+
+bookmark:
+    type:           rest
+    resource:       BookmarkManager\ApiBundle\Controller\BookmarkController
+
+tag:
+    type:           rest
+    resource:       BookmarkManager\ApiBundle\Controller\TagController
+
+search:
+    type:           rest
+    resource:       BookmarkManager\ApiBundle\Controller\SearchController
+
+
+data:
+    type:           rest
+    resource:       BookmarkManager\ApiBundle\Controller\DataController

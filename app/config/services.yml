@@ -1,0 +1,19 @@
+# Learn more about services, parameters and containers at
+# http://symfony.com/doc/current/book/service_container.html
+parameters:
+
+services:
+
+  # Service for generate nelmio api doc with our custom api error annotation
+  apibundle.api_doc.extractor.api_error_code_annotation_handler:
+          class: BookmarkManager\ApiBundle\AnnotationHandler\ApiErrorsAnnotationHandler
+          tags:
+              - { name: nelmio_api_doc.extractor.handler }
+
+
+  activity_listener:
+          class: BookmarkManager\ApiBundle\Listener\ActivityListener
+          arguments: [ @security.token_storage, @doctrine.orm.entity_manager ]
+          tags:
+              - { name: kernel.event_listener, event: kernel.controller, method: onCoreController }
+              - { name: kernel.event_listener, event: kernel.request, method: onKernelRequest }

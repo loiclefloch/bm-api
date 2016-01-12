@@ -1,0 +1,12 @@
+nelmio_api_doc:
+    name:                   'BookmarkManager API documentation'
+    default_sections_opened: true
+
+    request_listener:
+        enabled:    false
+
+    sandbox:
+        enabled:    false
+
+    cache:
+        enabled:    false

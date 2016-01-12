@@ -1,0 +1,15 @@
+# see https://github.com/FriendsOfSymfony/FOSOAuthServerBundle/blob/master/Resources/doc/configuration_reference.md
+fos_oauth_server:
+    db_driver:           orm # Driver availables: orm, mongodb, or propel
+    client_class:        BookmarkManager\ApiBundle\Entity\Auth\Client
+    access_token_class:  BookmarkManager\ApiBundle\Entity\Auth\AccessToken
+    refresh_token_class: BookmarkManager\ApiBundle\Entity\Auth\RefreshToken
+    auth_code_class:     BookmarkManager\ApiBundle\Entity\Auth\AuthCode
+
+    service:
+        user_provider:  fos_user.user_provider.username_email
+        options:
+          # Changing tokens and authcode lifetime
+          access_token_lifetime: 604800 # one week
+          refresh_token_lifetime: 1209600
+          #auth_code_lifetime: 30

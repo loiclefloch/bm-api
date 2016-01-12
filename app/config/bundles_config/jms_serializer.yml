@@ -1,0 +1,15 @@
+jms_serializer:
+    handlers:
+        datetime:
+            default_format: "c" # ISO8601
+            default_timezone: "UTC" # defaults to whatever timezone set in php.ini or via date_default_timezone_set
+
+    property_naming:
+        separator:  _ # default
+        lower_case: true # default
+
+    metadata:
+            directories:
+                FOSUserBundle:
+                    path:             "@ApiBundle/Resources/serializer/"
+                    namespace_prefix: "FOS\\UserBundle"

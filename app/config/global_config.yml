@@ -1,0 +1,4 @@
+parameters:
+    default_results_limit: 25
+    max_results_limit:     50
+    default_search_radius_limit: 15
