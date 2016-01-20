@@ -16,12 +16,6 @@ class TagType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options)
     {
         $builder
-            ->add('id',
-                'integer',
-                [
-                    'required' => false
-                ]
-            )
             ->add(
                 'name',
                 'text',
@@ -35,6 +29,8 @@ class TagType extends AbstractType
                                     'max' => 255
                                 ]
                             ),
+                            new Assert\NotBlank(),
+                            new Assert\NotNull(),
                         ] : []),
                 ]
             )

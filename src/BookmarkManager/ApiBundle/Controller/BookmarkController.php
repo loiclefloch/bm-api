@@ -2,6 +2,8 @@
 
 namespace BookmarkManager\ApiBundle\Controller;
 
+use BookmarkManager\ApiBundle\Tool\WebsiteCrawler;
+use BookmarkManager\ApiBundle\Utils\BookmarkUtils;
 use FOS\RestBundle\Request\ParamFetcher;
 use FOS\RestBundle\Controller\Annotations as Rest;
 use Nelmio\ApiDocBundle\Annotation\ApiDoc;
@@ -63,233 +65,8 @@ class BookmarkController extends BaseController
     public function postBookmarkAction(Request $request)
     {
         $data = $request->request->all();
-        $bookmarkEntity = new Bookmark();
-
-        $form = $this->createForm(
-            new BookmarkType(),
-            $bookmarkEntity,
-            ['method' => 'POST']
-        );
-
-        $form->submit($data, false);
-
-        if ($form->isValid()) {
-
-            $url = $this->cleanUrl($bookmarkEntity->getUrl());
-
-            if (filter_var($url, FILTER_VALIDATE_URL) === false) {
-                return $this->errorResponse(102, "Invalid url", Response::HTTP_BAD_REQUEST);
-            }
-
-            // Search if bookmark already exists.
-            $exists = $this->getRepository('Bookmark')->findOneBy(
-                [
-                    'owner' => $this->getUser(),
-                    'url' => $url,
-                ]
-            );
-
-            if ($exists) {
-                return $this->errorResponse(101, "Bookmark already exists with this url.");
-            }
-
-            $bookmarkEntity->setUrl($url);
-            $bookmarkEntity = $this->crawlWebsite($bookmarkEntity);
-            $bookmarkEntity->setOwner($this->getUser());
-
-            $this->persistEntity($bookmarkEntity);
-
-            return $this->successResponse($bookmarkEntity, Response::HTTP_CREATED);
-        }
-
-        return $this->errorResponse(
-            400,
-            $this->formErrorsToArray($form),
-            Response::HTTP_BAD_REQUEST
-        );
-
-    }
-
-    /**
-     * Remove useless query parameters from url
-     * @param $url
-     * @return mixed
-     */
-    protected function cleanUrl($url)
-    {
-        // Add http prefix if not exists
-        if (preg_match("#https?://#", $url) === 0) {
-            $url = 'http://'.$url;
-        }
-
-        $QUERIES_TO_REMOVE = [
-            'utm_source',
-            'utm_medium',
-            'utm_term',
-            'utm_content',
-            'utm_campaign',
-        ];
-
-        $parsedUrl = parse_url($url);
-
-        if ($parsedUrl) {
-
-            // Remove queries that must be removed.
-            if (isset($parsedUrl['query'])) {
-                $parsedUrl['query'] = implode(
-                    '&',
-                    array_filter(
-                        explode('&', $parsedUrl['query']),
-                        function ($param) use ($QUERIES_TO_REMOVE) {
-                            $queryName = explode('=', $param)[0];
-                            $found = array_search($queryName, $QUERIES_TO_REMOVE) !== false;
-
-                            return !$found;
-                        }
-                    )
-                );
-
-                if ($parsedUrl['query'] === '') {
-                    unset($parsedUrl['query']);
-                }
-            }
-            $newUrl = $this->buildUrl($parsedUrl);
-
-        } else {
-            $newUrl = $url;
-        }
-
-        return $newUrl;
-    }
-
-    protected function buildUrl($parsed_url)
-    {
-        $scheme = isset($parsed_url['scheme']) ? $parsed_url['scheme'].'://' : '';
-        $host = isset($parsed_url['host']) ? $parsed_url['host'] : '';
-        $port = isset($parsed_url['port']) ? ':'.$parsed_url['port'] : '';
-        $user = isset($parsed_url['user']) ? $parsed_url['user'] : '';
-        $pass = isset($parsed_url['pass']) ? ':'.$parsed_url['pass'] : '';
-        $pass = ($user || $pass) ? "$pass@" : '';
-        $path = isset($parsed_url['path']) ? $parsed_url['path'] : '';
-        $query = isset($parsed_url['query']) ? '?'.$parsed_url['query'] : '';
-        $fragment = isset($parsed_url['fragment']) ? '#'.$parsed_url['fragment'] : '';
-
-        return "$scheme$user$pass$host$port$path$query$fragment";
-    }
-
-    protected function crawlWebsite(Bookmark $bookmark)
-    {
-        // TODO: Handle 404.
-        $html = $this->get_data($bookmark->getUrl());
-
-        if ($html) {
-
-            $crawler = new Crawler($html);
-
-            $title = $crawler->filter('head > title')->text();
-//            $description = $crawler->filter('meta[name="description"]');
-//            $ogTitle = $crawler->filter('meta[property="title"]');
-//            $ogType = null;
-//            $ogImage = null;
-
-            // -- Meta name
-
-            $metaNameCrawler = $crawler->filter('head > meta')->reduce(
-                function (Crawler $node) {
-                    $nameValue = $node->attr('name');
-
-                    // We get all non null meta with a name or a property
-                    return null !== $nameValue && null !== $node->attr('content');
-                }
-            );
-
-            $metaNames = [];
-            foreach ($metaNameCrawler as $item) {
-                $name = $item->getAttribute('name');
-                $content = $item->getAttribute('content');
-
-                $metaNames[$name] = $content;
-            }
-
-            // -- Meta property
-
-            $metaPropertyCrawler = $crawler->filter('head > meta')->reduce(
-                function (Crawler $node) {
-                    $propertyValue = $node->attr('property');
-
-                    // We get all non null meta with a name or a property
-                    return null !== $propertyValue && null !== $node->attr('content');
-                }
-            );
-
-            $metaProperties = [];
-            foreach ($metaPropertyCrawler as $item) {
-                $name = $item->getAttribute('property');
-                $content = $item->getAttribute('content');
-
-                $metaProperties[$name] = $content;
-            }
-
-//            var_dump($metaNames);
-//            var_dump($metaProperties);
-
-            // All the information that we want to retrieve.
-            $websiteInfo = [
-                'author' => null,
-                'keywords' => null,
-                'og:title' => null,
-                'og:type' => null,
-                'og:image' => null,
-                'og:description' => null,
-            ];
-
-            // -- Retrieve website's information
-
-            $websiteInfo['author'] = $this->array_get_key('Author', $metaNames);
-            $websiteInfo['keywords'] = $this->array_get_key('Keywords', $metaNames);
-            $websiteInfo['description'] = $this->array_get_key('description', $metaProperties);
-
-            // See http://ogp.me/
-            $websiteInfo['og:title'] = $this->array_get_key('og:title', $metaProperties);
-            $websiteInfo['og:type'] = $this->array_get_key('og:type', $metaProperties);
-            $websiteInfo['og:image'] = $this->array_get_key('og:image', $metaProperties);
-            $websiteInfo['og:description'] = $this->array_get_key('og:description', $metaProperties);
-
-            if ($websiteInfo['description'] === null or strlen($websiteInfo['description']) === 0) {
-                $description = $websiteInfo['og:description'];
-            } else {
-                $description = $websiteInfo['description'];
-            }
-
-//            var_dump($websiteInfo);
-
-            // TODO: Add $websiteInfo to a new entity.
-
-            $bookmark->setTitle($title);
-            $bookmark->setDescription($description);
-        }
-
-        // TODO: add https://github.com/j0k3r/php-readability
-
-        return $bookmark;
-    }
-
-    protected function array_get_key($key, $array)
-    {
-        return isset($array[$key]) ? $array[$key] : null;
-    }
-
-    protected function get_data($url)
-    {
-        $ch = curl_init();
-        $timeout = 15;
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $timeout);
-        $data = curl_exec($ch);
-        curl_close($ch);
-
-        return $data;
+        $bookmarkEntity = BookmarkUtils::createBookmark($this, $data);
+        return $this->successResponse($bookmarkEntity, Response::HTTP_CREATED);
     }
 
     /**
@@ -680,4 +457,19 @@ class BookmarkController extends BaseController
         return $this->successResponse($bookmarkEntity);
     }
 
+    /**
+     * Should be used only for test
+     *
+     * @ApiDoc(
+     *  description="test crawler"
+     * )
+     * @param Request $request
+     * @return Response
+     * @throws \BookmarkManager\ApiBundle\Exception\BMErrorResponseException
+     */
+    public function postCrawlerTestAction(Request $request) {
+        $data = $request->request->all();
+        $bookmarkEntity = BookmarkUtils::testCrawler($this, $data);
+        return $this->successResponse($bookmarkEntity, Response::HTTP_OK);
+    }
 }

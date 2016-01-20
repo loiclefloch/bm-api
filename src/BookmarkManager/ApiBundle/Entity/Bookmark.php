@@ -2,10 +2,25 @@
 
 namespace BookmarkManager\ApiBundle\Entity;
 
+use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\ORM\Mapping as ORM;
 
 use \BookmarkManager\ApiBundle\Entity\Tag;
 use \BookmarkManager\ApiBundle\Entity\User;
+
+/**
+ * Define the different type of bookmark. Can be found by looking the og:type website meta.
+ *
+ * Class BookmarkType
+ * @package BookmarkManager\ApiBundle\Entity
+ */
+class BookmarkType
+{
+    const TYPE_WEBSITE = 0; // default
+    const TYPE_ARTICLE = 1;
+    const TYPE_VIDEO = 2;
+    const TYPE_MUSIC = 3;
+}
 
 /**
  * Team
@@ -15,6 +30,7 @@ use \BookmarkManager\ApiBundle\Entity\User;
  */
 class Bookmark
 {
+
     /**
      * @var integer
      *
@@ -27,7 +43,7 @@ class Bookmark
     /**
      * @var string
      *
-     * @ORM\Column(name="name", type="string", length=255)
+     * @ORM\Column(name="name", type="string", length=255, nullable=true)
      */
     private $name;
 
@@ -60,15 +76,22 @@ class Bookmark
     private $description;
 
     /**
+     * @var smallint
+     *
+     * @ORM\Column(name="type", type="smallint", nullable=false)
+     */
+    private $type;
+
+    /**
      * @var Bookmark teams
      * @ORM\ManyToOne(targetEntity="User", inversedBy="bookmarks")
      */
     private $owner;
 
     /**
-     * @var array
-     * $Expose
-     * @ORM\ManyToMany(targetEntity="Tag", mappedBy="bookmarks")
+     * @var ArrayCollection tags
+     *
+     * @ORM\ManyToMany(targetEntity="Tag", cascade={"persist"})
      */
     private $tags;
 
@@ -93,6 +116,8 @@ class Bookmark
      */
     public function __construct()
     {
+        $this->tags = new ArrayCollection();
+        $this->type = BookmarkType::TYPE_WEBSITE;
     }
 
     /**
@@ -224,6 +249,29 @@ class Bookmark
     }
 
     /**
+     * Set type
+     *
+     * @param string $type
+     * @return Bookmark
+     */
+    public function setType($type)
+    {
+        $this->type = $type;
+
+        return $this;
+    }
+
+    /**
+     * Get type
+     *
+     * @return string
+     */
+    public function getType()
+    {
+        return $this->type;
+    }
+
+    /**
      * Set owner
      *
      * @param User $owner
@@ -297,7 +345,7 @@ class Bookmark
     /**
      * Get notes
      *
-     * @return string 
+     * @return string
      */
     public function getNotes()
     {

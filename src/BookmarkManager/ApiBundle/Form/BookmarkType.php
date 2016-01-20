@@ -16,10 +16,11 @@ class BookmarkType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options)
     {
         $builder
-            ->add('id',
+            ->add(
+                'id',
                 'integer',
                 [
-                    'required' => false
+                    'required' => false,
                 ]
             )
             ->add(
@@ -45,7 +46,7 @@ class BookmarkType extends AbstractType
                             new Assert\Length(
                                 [
                                     'min' => 0,
-                                    'max' => 255
+                                    'max' => 255,
                                 ]
                             ),
                         ] : []),
@@ -55,17 +56,11 @@ class BookmarkType extends AbstractType
                 'notes',
                 'text',
                 [
-                    'required' => false
-                ]
-            )
-            ->add(
-                'tags',
-                'collection',
-                [
-                    'required' => true,
-                    'mapped' => false,
+                    'required' => false,
                 ]
             );
+
+        // We handle tags manually.
     }
 
     /**

@@ -2,9 +2,12 @@
 
 namespace BookmarkManager\ApiBundle\DependencyInjection;
 
+use BookmarkManager\ApiBundle\Utils\ArrayUtils;
+use BookmarkManager\ApiBundle\Utils\RequestUtils;
 use FOS\RestBundle\Controller\FOSRestController;
 use FOS\RestBundle\View\View;
 
+use Symfony\Component\Form\Form;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Serializer\Exception\LogicException;
@@ -19,7 +22,7 @@ class BaseController extends FOSRestController
      * @param int $httpCode the http code of the response
      * @return Response The response object
      */
-    protected function buildResponse($data = array(), $httpCode = Response::HTTP_OK)
+    protected function buildResponse($data = array(), $httpCode = 200)
     {
 
         $view = View::create();
@@ -123,7 +126,7 @@ class BaseController extends FOSRestController
      * @param $httpCode int The httpCode to return
      * @return Response The response to return
      */
-    protected function errorResponse($code, $message, $httpCode = Response::HTTP_BAD_REQUEST)
+    protected function errorResponse($code, $message, $httpCode = 400)
     {
 
         return $this->buildResponse(
@@ -147,14 +150,29 @@ class BaseController extends FOSRestController
 
     // ---------------------------------------------------------------------------------------------------------------
 
-    protected function getRepository($name = null)
+    /**
+     * The JSON PUT data will include all attributes in the entity, even those that are not update by the user and are
+     * not in the form.
+     * We need to remove these extra fields or we will get a "This form should not contain extra fields" Form Error.
+     * @param Request $request
+     * @param Form $form
+     * @return Form
+     */
+    protected function bindFormForPut(Request $request, Form $form)
+    {
+        return RequestUtils::bindDataToForm($data = $request->request->all(), $form);
+    }
+
+    // ---------------------------------------------------------------------------------------------------------------
+
+    public function getRepository($name = null)
     {
         assert($name !== null, "repository name is null");
 
         return $this->getDoctrine()->getManager()->getRepository("ApiBundle:".$name);
     }
 
-    protected function persistEntity($entity)
+    public function persistEntity($entity)
     {
         $em = $this->get('doctrine')->getManager();
         $em->persist($entity);
@@ -165,7 +183,7 @@ class BaseController extends FOSRestController
         }
     }
 
-    protected function flush()
+    public function flush()
     {
         $em = $this->get('doctrine')->getManager();
         try {
@@ -175,7 +193,7 @@ class BaseController extends FOSRestController
         }
     }
 
-    protected function removeEntity($entity)
+    public function removeEntity($entity)
     {
         $em = $this->get('doctrine')->getManager();
         $em->remove($entity);
@@ -186,8 +204,7 @@ class BaseController extends FOSRestController
         }
     }
 
-
-    protected function getLogger()
+    public function getLogger()
     {
         return $this->get('logger');
     }
@@ -202,15 +219,7 @@ class BaseController extends FOSRestController
      */
     protected function renameArrayIndexes($newIndexes, $data)
     {
-        $final = array();
-        foreach ($data as $name => $value) {
-            if (isset($newIndexes[$name])) {
-                $name = $newIndexes[$name];
-            }
-            $final[$name] = $value;
-        }
-
-        return ($final);
+        return ArrayUtils::renameArrayIndexes($newIndexes, $data);
     }
 
     /**
@@ -220,21 +229,15 @@ class BaseController extends FOSRestController
      */
     protected function formErrorsToArray($form)
     {
-        $errors = array();
-        foreach ($form->getErrors() as $error) {
-            $message = $error->getMessage();
-            if ($message != null) {
-                $errors[] = $message.(substr($message, -1) != '.' ? '.' : null);
-            }
-        }
-        foreach ($form->all() as $key => $child) {
-            if (($err = $this->formErrorsToArray($child))) {
-                $errors[$key] = $err;
-            }
-        }
-
-        return ($errors);
+       return ArrayUtils::formErrorsToArray($form);
     }
+
+    // ---------------------------------------------------------------------------------------------------------------
+    protected function toJSON($obj)
+    {
+        return $this->container->get('serializer')->serialize($obj, 'json');
+    }
+
 
     // ---------------------------------------------------------------------------------------------------------------
 

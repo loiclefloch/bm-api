@@ -47,13 +47,6 @@ class Tag
     private $color;
 
     /**
-     * @var array
-     * @ORM\ManyToMany(targetEntity="Bookmark", inversedBy="tags")
-     * @Expose
-     */
-    private $bookmarks;
-
-    /**
      * @var Bookmark teams
      * @ORM\ManyToOne(targetEntity="User", inversedBy="tags")
      * @Expose
@@ -125,72 +118,6 @@ class Tag
     public function getColor()
     {
         return $this->color;
-    }
-
-    /**
-     * Add tags
-     *
-     * @param Bookmark $tags
-     * @return Tag
-     */
-    public function addTag(Bookmark $tags)
-    {
-        $this->tags[] = $tags;
-
-        return $this;
-    }
-
-    /**
-     * Remove tags
-     *
-     * @param Bookmark $tags
-     */
-    public function removeTag(Bookmark $tags)
-    {
-        $this->tags->removeElement($tags);
-    }
-
-    /**
-     * Get tags
-     *
-     * @return \Doctrine\Common\Collections\Collection 
-     */
-    public function getTags()
-    {
-        return $this->tags;
-    }
-
-    /**
-     * Add bookmarks
-     *
-     * @param Bookmark $bookmarks
-     * @return Tag
-     */
-    public function addBookmark(Bookmark $bookmarks)
-    {
-        $this->bookmarks[] = $bookmarks;
-
-        return $this;
-    }
-
-    /**
-     * Remove bookmarks
-     *
-     * @param Bookmark $bookmarks
-     */
-    public function removeBookmark(Bookmark $bookmarks)
-    {
-        $this->bookmarks->removeElement($bookmarks);
-    }
-
-    /**
-     * Get bookmarks
-     *
-     * @return \Doctrine\Common\Collections\Collection 
-     */
-    public function getBookmarks()
-    {
-        return $this->bookmarks;
     }
 
     /**

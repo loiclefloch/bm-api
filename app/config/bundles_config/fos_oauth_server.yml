@@ -12,4 +12,4 @@ fos_oauth_server:
           # Changing tokens and authcode lifetime
           access_token_lifetime: 604800 # one week
           refresh_token_lifetime: 1209600
-          #auth_code_lifetime: 30
+          auth_code_lifetime: 604800

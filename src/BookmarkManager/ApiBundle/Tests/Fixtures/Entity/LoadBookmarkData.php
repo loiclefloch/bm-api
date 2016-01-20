@@ -39,7 +39,15 @@ class LoadBookmarkData extends AbstractFixture implements FixtureInterface
         $bmToRemoveMember->setName('bmToRemoveTag');
         $bmToRemoveMember->setUrl('fewef.fr');
 
-        // -- Persist users
+        // TODO: set owner;
+        //$bm1->setOwner();
+        //$bm2->setOwner();
+        //$bmToDelete->setOwner();
+        //$bmToUpdate->setOwner();
+        //$bmToAddMember->setOwner();
+        //$bmToRemoveMember->setOwner();
+
+        // -- Persist
         $manager->persist($bm1);
         $manager->persist($bm2);
         $manager->persist($bmToDelete);

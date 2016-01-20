@@ -112,6 +112,13 @@ class SearchController extends BaseController
             $tagsName = explode($params['tags'], ',');
         }
 
+        // TODO: add where the owner of the bookmark is the current user.
+//        $query
+//            ->join('p.owner', 'u')
+//            ->where('u.id = :id')
+//            ->setParameter('id', $this->getUser()->getId());
+
+
         // -- Count total number of result.
         $countQuery = clone($query);
         $countQuery = $countQuery->select('COUNT(p)')->getQuery();

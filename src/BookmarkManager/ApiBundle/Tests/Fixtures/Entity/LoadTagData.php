@@ -27,6 +27,12 @@ class LoadTagData extends AbstractFixture implements FixtureInterface
         $tagToUpdate = new Tag();
         $tagToUpdate->setName('tagToUpdate');
 
+        // TODO: set owner;
+//        $tag1->setOwner();
+//        $tag2->setOwner();
+//        $tagToDelete->setOwner();
+//        $tagToUpdate->setOwner();
+
         // -- Persist users
         $manager->persist($tag1);
         $manager->persist($tag2);

@@ -3,7 +3,9 @@
 namespace BookmarkManager\ApiBundle\Controller;
 
 use BookmarkManager\ApiBundle\Entity\Tag;
+use BookmarkManager\ApiBundle\Exception\BMErrorResponseException;
 use BookmarkManager\ApiBundle\Form\TagType;
+use BookmarkManager\ApiBundle\Utils\TagUtils;
 use Nelmio\ApiDocBundle\Annotation\ApiDoc;
 use Symfony\Component\HttpFoundation\Request;
 use BookmarkManager\ApiBundle\DependencyInjection\BaseController;
@@ -56,43 +58,10 @@ class TagController extends BaseController
     public function postTagAction(Request $request)
     {
         $data = $request->request->all();
-        $tagEntity = new Tag();
 
-        $form = $this->createForm(
-            new TagType(),
-            $tagEntity,
-            ['method' => 'POST']
-        );
+        $tagEntity = TagUtils::createTag($this, $data);
 
-        $form->submit($data, false);
-
-        if ($form->isValid()) {
-
-            // Search if tag already exists.
-            $exists = $this->getRepository('Tag')->findOneBy(
-                [
-                    'name' => $tagEntity->getName(),
-                    'owner' => $this->getUser(),
-
-                ]
-            );
-
-            $tagEntity->setOwner($this->getUser());
-
-            if ($exists) {
-                return $this->errorResponse(101, "Tag already exists");
-            }
-
-            $this->persistEntity($tagEntity);
-
-            return $this->successResponse($tagEntity, Response::HTTP_CREATED);
-        }
-
-        return $this->errorResponse(
-            400,
-            $this->formErrorsToArray($form),
-            Response::HTTP_BAD_REQUEST
-        );
+        return $this->successResponse($tagEntity, Response::HTTP_CREATED);
     }
 
     /**
