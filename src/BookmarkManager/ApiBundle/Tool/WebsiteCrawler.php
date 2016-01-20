@@ -161,7 +161,7 @@ class WebsiteCrawler
         // -- Handle basic og information See http://ogp.me/
         $websiteInfo['og:title'] = $this->array_get_key('og:title', $metaProperties);
         $websiteInfo['og:image'] = $this->array_get_key('og:image', $metaProperties);
-        
+
         $websiteInfo['og:description'] = $this->array_get_key('og:description', $metaProperties);
 
         $ogType = $this->array_get_key('og:type', $metaProperties);

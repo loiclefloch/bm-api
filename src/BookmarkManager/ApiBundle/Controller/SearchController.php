@@ -98,7 +98,7 @@ class SearchController extends BaseController
 
         if (isset($params['url']) && $params['url'] != null && !empty($params['url'])) {
             $query
-                ->where('p.url LIKE :url')
+                ->andWhere($query->expr()->like('p.url', ':url'))
                 ->setParameter('url', '%'.$params['url'].'%');
         }
 
@@ -108,16 +108,26 @@ class SearchController extends BaseController
         }
 
         if (isset($params['tags'])) {
-            // TODO add tags query.
-            $tagsName = explode($params['tags'], ',');
+            // -- Handle many tags, separate by ','
+            if (strpos($params['tags'], ',')) {
+                $tagsName = explode($params['tags'], ',');
+            } else {
+                $tagsName = [$params['tags']];
+            }
+
+            foreach ($tagsName as $tagName) {
+                $query
+                    ->leftJoin('p.tags', 't')
+                    ->andWhere('t.name = :name')
+                    ->setParameter('name', $tagName);
+            }
         }
 
-        // TODO: add where the owner of the bookmark is the current user.
-//        $query
-//            ->join('p.owner', 'u')
-//            ->where('u.id = :id')
-//            ->setParameter('id', $this->getUser()->getId());
-
+        // -- Select only the user's bookmarks
+        $query
+            ->leftJoin('p.owner', 'u')
+            ->andWhere('u.id = :owner')
+            ->setParameter('owner', $this->getUser()->getId());
 
         // -- Count total number of result.
         $countQuery = clone($query);
