@@ -1,13 +1,6 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: loic
- * Date: 12/01/16
- * Time: 20:18
- */
 
 namespace BookmarkManager\ApiBundle\Controller;
-
 
 use BookmarkManager\ApiBundle\Annotation\ApiErrors;
 use BookmarkManager\ApiBundle\DependencyInjection\BaseController;
@@ -136,8 +129,6 @@ class DataController extends BaseController
 
         $jsonContent = $this->toJSON($content);
 
-//        var_dump($jsonContent);
-
         // Generate response
         $response = new Response();
 
@@ -145,7 +136,7 @@ class DataController extends BaseController
         $response->headers->set('Cache-Control', 'private');
         $response->headers->set('Content-type', "application/json");
         $response->headers->set('Content-Disposition', 'attachment; filename="'.$filename.'";');
-        $response->headers->set('Content-length', sizeof($jsonContent));
+        $response->headers->set('Content-length', strlen($jsonContent));
 
         // Send headers before outputting anything
         $response->sendHeaders();
