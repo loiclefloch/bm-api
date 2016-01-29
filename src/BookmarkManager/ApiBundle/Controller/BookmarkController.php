@@ -50,7 +50,7 @@ class BookmarkController extends BaseController
         $paging = array(
             'page' => $params['page'],
             'limit' => $params['limit'],
-            'sort_by' => array('created_at' => 'DESC'),
+            'sort_by' => array('updated_at' => 'DESC'),
             'total' => 0,
             'results' => 0,
             'last_page' => 0,

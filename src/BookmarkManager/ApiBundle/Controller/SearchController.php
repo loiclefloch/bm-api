@@ -156,7 +156,7 @@ class SearchController extends BaseController
             return $this->errorResponse(102, 'resource not found', Response::HTTP_BAD_REQUEST);
         }
 
-        return $this->successResponse(array('data' => $data), Response::HTTP_OK, ['list'], $paging);
+        return $this->successResponse(array('bookmarks' => $data), Response::HTTP_OK, ['list'], $paging);
     }
 
     // ---------------------------------------------------------------------------------------------------------------
