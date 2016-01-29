@@ -4,8 +4,10 @@ namespace BookmarkManager\ApiBundle\Controller;
 
 use BookmarkManager\ApiBundle\Tool\WebsiteCrawler;
 use BookmarkManager\ApiBundle\Utils\BookmarkUtils;
+use FOS\RestBundle\Controller\Annotations\View;
 use FOS\RestBundle\Request\ParamFetcher;
 use FOS\RestBundle\Controller\Annotations as Rest;
+use JMS\Serializer\SerializerBuilder;
 use Nelmio\ApiDocBundle\Annotation\ApiDoc;
 use Symfony\Component\HttpFoundation\Request;
 use BookmarkManager\ApiBundle\DependencyInjection\BaseController;
@@ -14,6 +16,7 @@ use BookmarkManager\ApiBundle\Form\BookmarkType;
 use BookmarkManager\ApiBundle\Annotation\ApiErrors;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\DomCrawler\Crawler;
+use JMS\Serializer\SerializationContext;
 
 /**
  * Bookmark controller.
@@ -23,19 +26,97 @@ class BookmarkController extends BaseController
 
     /**
      * Lists all Bookmark entities.
+     * @Rest\QueryParam(name="page", requirements="[\d]+", default="1", description="Page number.")
+     * @Rest\QueryParam(name="limit", requirements="[\d]+", default="25", description="Number of results to display.")
      *
      * @ApiDoc(
-     *     description="Get all the user bookmarks"
+     *     description="Get the user bookmarks"
      * )
      *
+     * @ApiErrors({
+     *      { 102, "Resource not found" }
+     * })
+     *
+     * @param ParamFetcher $params
+     * @return Response
      */
-    public function getBookmarksAction()
+    public function getBookmarksAction(ParamFetcher $params)
     {
-        $bookmarks = $this->getUser()->getBookmarks();
+        $max_results_limit = $this->container->getParameter('max_results_limit');
+        $default_results_limit = $this->container->getParameter('default_results_limit');
 
-        return $this->successResponse(
-            ['bookmarks' => $bookmarks]
+        $params = $params->all();
+
+        $paging = array(
+            'page' => $params['page'],
+            'limit' => $params['limit'],
+            'sort_by' => array('created_at' => 'DESC'),
+            'total' => 0,
+            'results' => 0,
+            'last_page' => 0,
         );
+
+        if (isset($paging['page']) && intval($paging['page']) < 1) {
+            $errors['page'][] = 'Page must be positive';
+        }
+
+        if (isset($paging['limit'])) {
+            if (intval($paging['limit']) < 1) {
+                $errors['limit'][] = 'Limit must be positive';
+            }
+            if (intval($paging['limit']) > $max_results_limit) {
+                $errors['limit'][] = 'Limit is too high. Max '.$max_results_limit;
+            }
+        }
+
+        if (!empty($errors)) {
+            return ($this->errorResponse(101, $errors, Response::HTTP_BAD_REQUEST));
+        }
+
+        if (!isset($paging['limit']) || $paging['limit'] < 1) {
+            $paging['limit'] = $default_results_limit;
+        }
+
+        if (!isset($paging['page']) || $paging['page'] < 1) {
+            $paging['page'] = 1;
+        }
+
+        $paging['offset'] = (($paging['page'] - 1) * $paging['limit']);
+
+        $query = $this->getRepository('Bookmark')->createQueryBuilder('p');
+
+        // -- Select only the user's bookmarks
+        $query
+            ->leftJoin('p.owner', 'u')
+            ->andWhere('u.id = :owner')
+            ->setParameter('owner', $this->getUser()->getId());
+
+        // -- Count total number of result.
+        $countQuery = clone($query);
+        $countQuery = $countQuery->select('COUNT(p)')->getQuery();
+        $paging['total'] = intval($countQuery->getSingleScalarResult());
+
+        // -- Set limit to the query
+        $query = $query->setFirstResult($paging['offset'])
+            ->setMaxResults($paging['limit'])
+            ->orderBy('p.createdAt', 'DESC')
+            ->getQuery();
+
+        $data = $query->getResult();
+
+        // -- Set paging
+        $paging['last_page'] = intval(ceil($paging['total'] / $paging['limit']));
+
+        // -- Set number of results
+        $paging['results'] = count($data);
+
+        if (!(($paging['page'] <= $paging['last_page'] && $paging['page'] >= 1)
+            || ($paging['total'] == 0 && $paging['page'] == 1))
+        ) {
+            return ($this->errorResponse(102, 'resource not found', Response::HTTP_BAD_REQUEST));
+        }
+
+        return ($this->successResponse(array('bookmarks' => $data), Response::HTTP_OK, ['list'], $paging));
     }
 
     /**
@@ -66,6 +147,7 @@ class BookmarkController extends BaseController
     {
         $data = $request->request->all();
         $bookmarkEntity = BookmarkUtils::createBookmark($this, $data);
+
         return $this->successResponse($bookmarkEntity, Response::HTTP_CREATED);
     }
 
@@ -114,7 +196,7 @@ class BookmarkController extends BaseController
             return $this->notFoundResponse();
         }
 
-        return $this->successResponse($bookmarkEntity, Response::HTTP_OK);
+        return $this->successResponse($bookmarkEntity, Response::HTTP_OK, ['alone']);
     }
 
     /**
@@ -177,7 +259,7 @@ class BookmarkController extends BaseController
         if ($editForm->isValid()) {
             $this->persistEntity($bookmarkEntity);
 
-            return $this->successResponse($bookmarkEntity, Response::HTTP_OK);
+            return $this->successResponse($bookmarkEntity, Response::HTTP_OK, ['alone']);
         }
 
         return $this->errorResponse(
@@ -331,7 +413,7 @@ class BookmarkController extends BaseController
      *      }
      *  },
      *  statusCodes={
-     *      200="Returned when successful.",
+     *      201="Returned when successfully created.",
      *      404="Returned when the bookmark is not found.",
      *      400="Returned when the parameter is invalid."
      *  }
@@ -371,12 +453,8 @@ class BookmarkController extends BaseController
             ]
         );
 
-        if (!$bookmarkEntity) {
+        if (!$bookmarkEntity || !$tagEntity) {
             return $this->notFoundResponse();
-        }
-
-        if (!$tagEntity) {
-            // TODO create tag.
         }
 
         if (!$bookmarkEntity->haveTag($tagEntity)) {
@@ -384,7 +462,7 @@ class BookmarkController extends BaseController
             $this->persistEntity($bookmarkEntity);
         }
 
-        return $this->successResponse($bookmarkEntity);
+        return $this->successResponse($bookmarkEntity, Response::HTTP_CREATED, ['alone']);
     }
 
     /**
@@ -467,9 +545,11 @@ class BookmarkController extends BaseController
      * @return Response
      * @throws \BookmarkManager\ApiBundle\Exception\BMErrorResponseException
      */
-    public function postCrawlerTestAction(Request $request) {
+    public function postCrawlerTestAction(Request $request)
+    {
         $data = $request->request->all();
         $bookmarkEntity = BookmarkUtils::testCrawler($this, $data);
-        return $this->successResponse($bookmarkEntity, Response::HTTP_OK);
+
+        return $this->successResponse($bookmarkEntity, Response::HTTP_OK, ['alone']);
     }
 }

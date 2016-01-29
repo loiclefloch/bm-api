@@ -7,6 +7,7 @@ use BookmarkManager\ApiBundle\Utils\RequestUtils;
 use FOS\RestBundle\Controller\FOSRestController;
 use FOS\RestBundle\View\View;
 
+use JMS\Serializer\SerializationContext;
 use Symfony\Component\Form\Form;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -20,15 +21,22 @@ class BaseController extends FOSRestController
     /**
      * @param array $data the content of the response. It will be serialize.
      * @param int $httpCode the http code of the response
+     * @param array $groups
      * @return Response The response object
+     * @internal param array $group
      */
-    protected function buildResponse($data = array(), $httpCode = 200)
+    protected function buildResponse($data = array(), $httpCode = 200, $groups = [])
     {
 
         $view = View::create();
 
         $view->setStatusCode($httpCode);
         $view->setData($data);
+
+        if (!empty($groups)) {
+            $context = SerializationContext::create()->setGroups($groups);
+            $view->setSerializationContext($context);
+        }
 
         return $this->handleView($view);
     }
@@ -38,9 +46,10 @@ class BaseController extends FOSRestController
      * @param array $data
      * @param int $httpCode You must use Response defines
      * @param array $paging
+     * @param array $groups
      * @return Response The response to return
      */
-    protected function successResponse($data = array(), $httpCode = Response::HTTP_OK, $paging = [])
+    protected function successResponse($data = array(), $httpCode = Response::HTTP_OK, $groups = [], $paging = [])
     {
         if (!empty($paging)) {
             if (isset($paging['last_page'])
@@ -116,7 +125,7 @@ class BaseController extends FOSRestController
             $data = array_merge($data, ['paging' => $paging]);
         }
 
-        return $this->buildResponse($data, $httpCode);
+        return $this->buildResponse($data, $httpCode, $groups);
     }
 
     /**

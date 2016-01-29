@@ -130,4 +130,23 @@ class BookmarkUtils
         return $bookmarkEntity;
     }
 
+    public static function getBookmarkForUrl($controller, $url) {
+
+        $crawler = new WebsiteCrawler();
+        $url = $crawler->cleanUrl($bookmarkEntity->getUrl());
+
+        if (filter_var($url, FILTER_VALIDATE_URL) === false) {
+            throw new BmErrorResponseException(102, "Invalid url", Response::HTTP_BAD_REQUEST);
+        }
+
+        // Search if bookmark already exists.
+        $exists = $controller->getRepository('Bookmark')->findOneBy(
+            [
+                'owner' => $controller->getUser()->getId(),
+                'url' => $url,
+            ]
+        );
+
+        return $exists;
+    }
 }

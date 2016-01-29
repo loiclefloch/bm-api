@@ -1,4 +1,4 @@
 parameters:
-  default_results_limit: 25
-  max_results_limit:     50
-  contact_email:         "contact@BookmarkManager.fr"
+  default_results_limit: 20
+  max_results_limit:     40
+  contact_email:         "contact@loiclefloch.fr"

@@ -2,12 +2,14 @@
 
 namespace BookmarkManager\ApiBundle\Controller;
 
+use BookmarkManager\ApiBundle\Exception\BMErrorResponseException;
 use FOS\RestBundle\Request\ParamFetcher;
 use FOS\RestBundle\Controller\Annotations as Rest;
 use Nelmio\ApiDocBundle\Annotation\ApiDoc;
 use BookmarkManager\ApiBundle\DependencyInjection\BaseController;
 use BookmarkManager\ApiBundle\Entity\Bookmark;
 use BookmarkManager\ApiBundle\Annotation\ApiErrors;
+use BookmarkManager\ApiBundle\Tool\WebsiteCrawler;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -30,7 +32,7 @@ class SearchController extends BaseController
      * @Rest\QueryParam(name="limit", requirements="[\d]+", default="25", description="Number of results to display.")
      *
      * @ApiDoc(
-     *  description="Perform a search on all user bookmark",
+     *  description="Search bookmarks",
      *  statusCodes={
      *      200="Returned when successful.",
      *      404="Returned when no bookmark are found for the specified parameters.",
@@ -45,7 +47,7 @@ class SearchController extends BaseController
      * @param ParamFetcher $params
      * @return Response
      */
-    public function getSearchBookmarkAction(ParamFetcher $params)
+    public function getSearchBookmarksAction(ParamFetcher $params)
     {
         $max_results_limit = $this->container->getParameter('max_results_limit');
         $default_results_limit = $this->container->getParameter('default_results_limit');
@@ -151,9 +153,66 @@ class SearchController extends BaseController
         if (!(($paging['page'] <= $paging['last_page'] && $paging['page'] >= 1)
             || ($paging['total'] == 0 && $paging['page'] == 1))
         ) {
-            return ($this->errorResponse(102, 'resource not found', Response::HTTP_BAD_REQUEST));
+            return $this->errorResponse(102, 'resource not found', Response::HTTP_BAD_REQUEST);
         }
 
-        return ($this->successResponse(array('data' => $data), Response::HTTP_OK, $paging));
+        return $this->successResponse(array('data' => $data), Response::HTTP_OK, ['list'], $paging);
     }
+
+    // ---------------------------------------------------------------------------------------------------------------
+    //    /search/bookmark
+    // ---------------------------------------------------------------------------------------------------------------
+
+    /**
+     * @Rest\QueryParam(name="url", description="Bookmark url.")
+     *
+     * @ApiDoc(
+     *  description="Search a bookmark by url",
+     *  statusCodes={
+     *      200="Returned when successful.",
+     *      400="Returned when parameters are invalid.",
+     *      404="Returned when no bookmark is found with the given url"
+     *  }
+     * )
+     *
+     * @ApiErrors({
+     *  {101, "You must provide an url"},
+     *  {102, "Invalid url"},
+     *  {404, "No bookmark found"}
+     * })
+     *
+     * @param ParamFetcher $params
+     * @return Response
+     * @throws BmErrorResponseException
+     */
+    public function getSearchBookmarkAction(ParamFetcher $params)
+    {
+
+        $params = $params->all();
+
+        if (!isset($params['url'])) {
+            return $this->errorResponse(101, 'You must provide an url');
+        }
+        $crawler = new WebsiteCrawler();
+        $url = $crawler->cleanUrl($params['url']);
+
+        if (filter_var($url, FILTER_VALIDATE_URL) === false) {
+            throw new BmErrorResponseException(102, "Invalid url", Response::HTTP_BAD_REQUEST);
+        }
+
+        // Search if bookmark already exists.
+        $bookmark = $this->getRepository('Bookmark')->findOneBy(
+            [
+                'owner' => $this->getUser()->getId(),
+                'url' => $url,
+            ]
+        );
+
+        if (!$bookmark) {
+            return $this->errorResponse(404, 'No bookmark found with this url', Response::HTTP_NOT_FOUND);
+        }
+
+        return $this->successResponse($bookmark, Response::HTTP_OK, ['alone']);
+    }
+
 }

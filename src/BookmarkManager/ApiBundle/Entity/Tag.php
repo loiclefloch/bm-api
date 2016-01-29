@@ -7,6 +7,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\ORM\Mapping as ORM;
 use \BookmarkManager\ApiBundle\Entity\Bookmark;
 use JMS\Serializer\Annotation\Expose;
+use JMS\Serializer\Annotation\Groups;
 
 /**
  * Tag
@@ -26,7 +27,9 @@ class Tag
      * @ORM\Column(name="id", type="integer")
      * @ORM\Id
      * @ORM\GeneratedValue(strategy="AUTO")
+     *
      * @Expose
+     * @Groups({"list","alone"})
      */
     private $id;
 
@@ -34,7 +37,9 @@ class Tag
      * @var string
      *
      * @ORM\Column(name="name", type="string", length=255)
+     *
      * @Expose
+     * @Groups({"list","alone"})
      */
     private $name;
 
@@ -42,14 +47,15 @@ class Tag
      * @var string
      *
      * @ORM\Column(name="color", type="string", length=7, nullable=true)
+     *
      * @Expose
+     * @Groups({"list","alone"})
      */
     private $color;
 
     /**
      * @var Bookmark teams
      * @ORM\ManyToOne(targetEntity="User", inversedBy="tags")
-     * @Expose
      */
     private $owner;
 

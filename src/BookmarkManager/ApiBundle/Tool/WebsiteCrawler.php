@@ -123,6 +123,19 @@ class WebsiteCrawler
 
         // TODO: add https://github.com/j0k3r/php-readability
 
+        /*
+         * TODO: add custom crawler according to the website.
+         * For example, github.com we need to retrieve the README.md if it's
+         * the main page of a project.
+         * If the url end with .md, we need to get the content on
+         * the article.entry-content
+         * Github have specific anchor: href="#a" link to <a name="user-content-a">
+         */
+
+        // TODO: remove scripts and html from content
+        // TODO: Add good urls to img and links
+        // TODO: anchors: add prefix to all the id
+
         return $bookmark;
     }
 

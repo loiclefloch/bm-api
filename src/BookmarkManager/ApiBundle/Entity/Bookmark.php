@@ -7,6 +7,9 @@ use Doctrine\ORM\Mapping as ORM;
 
 use \BookmarkManager\ApiBundle\Entity\Tag;
 use \BookmarkManager\ApiBundle\Entity\User;
+use JMS\Serializer\Annotation\ExclusionPolicy;
+use JMS\Serializer\Annotation\Expose;
+use JMS\Serializer\Annotation\Groups;
 
 /**
  * Define the different type of bookmark. Can be found by looking the og:type website meta.
@@ -23,10 +26,12 @@ class BookmarkType
 }
 
 /**
- * Team
+ * Bookmark
  * @ORM\HasLifecycleCallbacks
  * @ORM\Table()
  * @ORM\Entity
+ *
+ * @ExclusionPolicy("ALL")
  */
 class Bookmark
 {
@@ -37,6 +42,9 @@ class Bookmark
      * @ORM\Column(name="id", type="integer")
      * @ORM\Id
      * @ORM\GeneratedValue(strategy="AUTO")
+     *
+     * @Expose
+     * @Groups({"list","alone"})
      */
     private $id;
 
@@ -44,6 +52,9 @@ class Bookmark
      * @var string
      *
      * @ORM\Column(name="name", type="string", length=255, nullable=true)
+     *
+     * @Expose
+     * @Groups({"list","alone"})
      */
     private $name;
 
@@ -51,6 +62,9 @@ class Bookmark
      * @var string
      *
      * @ORM\Column(name="url", type="string", length=255, unique=true)
+     *
+     * @Expose
+     * @Groups({"list","alone"})
      */
     private $url;
 
@@ -58,6 +72,9 @@ class Bookmark
      * @var string
      *
      * @ORM\Column(name="title", type="string", length=255, nullable=true)
+     *
+     * @Expose
+     * @Groups({"list","alone"})
      */
     private $title;
 
@@ -65,20 +82,37 @@ class Bookmark
      * @var text
      *
      * @ORM\Column(name="notes", type="text", nullable=true)
+     *
+     * @Expose
+     * @Groups({"alone"})
      */
     private $notes;
+
+    /**
+     * @ORM\Column(name="content", type="text", nullable=true)
+     *
+     * @Expose
+     * @Groups({"alone"})
+     */
+    private $content;
 
     /**
      * @var string
      *
      * @ORM\Column(name="description", type="string", length=255, nullable=true)
+     *
+     * @Expose
+     * @Groups({"list","alone"})
      */
     private $description;
 
     /**
-     * @var smallint
+     * @var int type
      *
      * @ORM\Column(name="type", type="smallint", nullable=false)
+     *
+     * @Expose
+     * @Groups({"list","alone"})
      */
     private $type;
 
@@ -92,6 +126,9 @@ class Bookmark
      * @var ArrayCollection tags
      *
      * @ORM\ManyToMany(targetEntity="Tag", cascade={"persist"})
+     *
+     * @Expose
+     * @Groups({"list","alone"})
      */
     private $tags;
 
@@ -99,6 +136,9 @@ class Bookmark
      * @var \DateTime
      *
      * @ORM\Column(name="created_at", type="datetime")
+     *
+     * @Expose
+     * @Groups({"list","alone"})
      */
     private $createdAt;
 
@@ -106,6 +146,9 @@ class Bookmark
      * @var \DateTime
      *
      * @ORM\Column(name="updated_at", type="datetime")
+     *
+     * @Expose
+     * @Groups({"list","alone"})
      */
     private $updatedAt;
 
