@@ -12,8 +12,8 @@ use BookmarkManager\ApiBundle\Form\TagType;
 use BookmarkManager\ApiBundle\Crawler\WebsiteCrawler;
 use BookmarkManager\ApiBundle\Utils\BookmarkUtils;
 use BookmarkManager\ApiBundle\Utils\TagUtils;
-use FOS\RestBundle\Controller\Annotations\Get;
-use FOS\RestBundle\Controller\Annotations\Post;
+use FOS\RestBundle\Controller\Annotations as Rest;
+use FOS\RestBundle\Request\ParamFetcher;
 use Symfony\Component\HttpFoundation\Request;
 use Nelmio\ApiDocBundle\Annotation\ApiDoc;
 use Symfony\Component\HttpFoundation\Response;
@@ -25,7 +25,7 @@ class DataController extends BaseController
     /**
      * Import json file and create bookmarks and tags.
      *
-     * @Post("/data/import", name="import")
+     * @Rest\Post("/data/import")
      *
      * @ApiDoc(
      *  description="Import",
@@ -68,10 +68,9 @@ class DataController extends BaseController
             try {
                 $tagEntity = TagUtils::createTag($this, $tagData);
                 $newTags[] = $tagEntity;
-            }
-            catch (BMErrorResponseException $e) {
+            } catch (BMErrorResponseException $e) {
                 // do nothing
-                $this->getLogger()->info('Catch exception ' . $e->getMessage());
+                $this->getLogger()->info('Catch exception '.$e->getMessage());
             }
 
         }
@@ -83,10 +82,9 @@ class DataController extends BaseController
             try {
                 $bookmarkEntity = BookmarkUtils::createBookmark($this, $bookmarkData);
                 $newBookmarks[] = $bookmarkEntity;
-            }
-            catch (BMErrorResponseException $e) {
+            } catch (BMErrorResponseException $e) {
                 // do nothing
-                $this->getLogger()->info('Catch exception ' . $e->getMessage());
+                $this->getLogger()->info('Catch exception '.$e->getMessage());
             }
 
         }
@@ -105,29 +103,39 @@ class DataController extends BaseController
     /**
      * Export bookmarks and tags to a json file.
      *
-     * @Get("/data/export", name="export")
+     * @Rest\Get("/data/download")
+     *
+     * @Rest\QueryParam(name="filename", description="The name of the file to download")
      *
      * @ApiDoc(
-     *  description="Export",
+     *  description="Download file",
      *  statusCodes={
      *      200="Returned when successful."
      *  }
      * )
      *
-     * @param Request $request
+     * @ApiErrors({
+     *      { 101, "No filename given" }
+     * })
+     *
+     * [ROUTE] get_data_download
+     *
+     * @param ParamFetcher $params
      * @return Response
+     * @internal param $filename
      */
-    public function getDataExportAction(Request $request)
+    public function getDataDownloadAction(ParamFetcher $params)
     {
-        $filename = 'bm_export_'.gmdate("d_m_Y__H_i_s");
+        $filename = $params->get('filename');
 
-        $content = [
-            'version' => DataController::VERSION,
-            'bookmarks' => $this->getUser()->getBookmarks(),
-            'tags' => $this->toJSON($this->getUser()->getTags()),
-        ];
+        if (!$filename) {
+            return $this->errorResponse(101, 'No filename given');
+        }
 
-        $jsonContent = $this->toJSON($content);
+        $tmpDir = sys_get_temp_dir();
+        $filePath = $tmpDir.'/'.$filename;
+
+        $jsonContent = file_get_contents($filePath);
 
         // Generate response
         $response = new Response();
@@ -147,10 +155,56 @@ class DataController extends BaseController
     }
 
     /**
+     * Create json file that contains bookmarks and tags to a json file. Returns the url to retrieve the file.
+     *
+     * @Rest\Get("/data/export")
+     *
+     * @ApiDoc(
+     *  description="Create file to export",
+     *  statusCodes={
+     *      200="Returned when successful."
+     *  }
+     * )
+     *
+     * @param Request $request
+     * @return Response
+     */
+    public function getDataExportAction(Request $request)
+    {
+        $content = [
+            'version' => DataController::VERSION,
+            'bookmarks' => $this->getUser()->getBookmarks(),
+            'tags' => $this->toJSON($this->getUser()->getTags()),
+        ];
+
+        $jsonContent = $this->toJSON($content);
+
+        $filename = 'bm_export_'.$this->getUser()->getId().'_'.gmdate("d_m_Y__H_i_s").'.json';
+        $tmpDir = sys_get_temp_dir();
+        $filePath = $tmpDir.'/'.$filename;
+
+        $file = fopen($filePath, "w");
+        fwrite($file, $jsonContent);
+        fclose($file);
+
+        return $this->successResponse(
+            [
+                'file' => $filename,
+                'url' => $request->getScheme().'://'.$request->getHost().$this->generateUrl(
+                        'get_data_download',
+                        ['filename' => $filename]
+                    ),
+            ],
+            Response::HTTP_OK
+        );
+    }
+
+    /**
      * For testing purpose only, remove all bookmarks and tags
      *
      * @param Request $request
      * @return Response
+     *
      */
     public function getDataClearAction(Request $request)
     {

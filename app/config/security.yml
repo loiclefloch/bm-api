@@ -14,11 +14,20 @@ security:
             pattern:    ^/oauth/v2/token
             security:   false
 
+        download:
+            pattern:    ^/api/data/download
+            fos_oauth:    false
+            anonymous:    true
+
         api:
             pattern:    ^/api
             fos_oauth:  true
             stateless:  true
             anonymous:  false
+
+        api_doc:
+            pattern:      ^/doc
+            security:     false
 
     access_control:
         - { path: ^/oauth/v2/auth_login, role: IS_AUTHENTICATED_ANONYMOUSLY }
