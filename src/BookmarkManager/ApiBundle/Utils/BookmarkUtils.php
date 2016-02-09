@@ -13,7 +13,7 @@ use BookmarkManager\ApiBundle\Entity\Tag;
 use BookmarkManager\ApiBundle\Exception\BMErrorResponseException;
 use BookmarkManager\ApiBundle\Form\BookmarkType;
 use BookmarkManager\ApiBundle\Form\TagType;
-use BookmarkManager\ApiBundle\Tool\WebsiteCrawler;
+use BookmarkManager\ApiBundle\Crawler\WebsiteCrawler;
 use Symfony\Component\HttpFoundation\Response;
 
 class BookmarkUtils

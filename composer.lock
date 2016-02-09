@@ -4,8 +4,8 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file",
         "This file is @generated automatically"
     ],
-    "hash": "c8619e4fe1050dcb42af7662eb730752",
-    "content-hash": "a9eafb62b3b38e969da6bb47b09587b6",
+    "hash": "5056b88abdc6837a245df868a50ff765",
+    "content-hash": "d185375be2ed8848e539e5c1865fba5a",
     "packages": [
         {
             "name": "doctrine/annotations",
@@ -1198,6 +1198,68 @@
             "time": "2015-11-10 17:04:01"
         },
         {
+            "name": "j0k3r/php-readability",
+            "version": "v1.0.9",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/j0k3r/php-readability.git",
+                "reference": "41d7440c6e6130bacd50808342fe566e28f536fb"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/j0k3r/php-readability/zipball/41d7440c6e6130bacd50808342fe566e28f536fb",
+                "reference": "41d7440c6e6130bacd50808342fe566e28f536fb",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=5.3.3"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Readability\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "Apache-2.0"
+            ],
+            "authors": [
+                {
+                    "name": "Keyvan Minoukadeh",
+                    "email": "keyvan@keyvan.net",
+                    "homepage": "http://keyvan.net",
+                    "role": "Developer (ported original JS code to PHP)"
+                },
+                {
+                    "name": "Arc90",
+                    "homepage": "http://arc90.com",
+                    "role": "Developer (original JS version)"
+                },
+                {
+                    "name": "Jeremy Benoist",
+                    "email": "jeremy.benoist@gmail.com",
+                    "homepage": "http://www.j0k3r.net",
+                    "role": "Developer"
+                },
+                {
+                    "name": "DitherSky",
+                    "homepage": "https://github.com/Dither",
+                    "role": "Developer (https://github.com/Dither/full-text-rss)"
+                }
+            ],
+            "description": "Automatic article extraction from HTML",
+            "keywords": [
+                "article",
+                "article extraction",
+                "content",
+                "content extraction",
+                "extraction",
+                "html"
+            ],
+            "time": "2015-11-10 08:55:29"
+        },
+        {
             "name": "jdorn/sql-formatter",
             "version": "v1.2.17",
             "source": {
@@ -1565,7 +1627,7 @@
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/liip/LiipFunctionalTestBundle/zipball/ee0f56293ed6d8947f09c4d74b682c7c0e11562f",
+                "url": "https://api.github.com/repos/liip/LiipFunctionalTestBundle/zipball/4423941779bc1448c49447c57be15506733a35c8",
                 "reference": "a824aeda55a370ba21740a6464eed38c93f06dd0",
                 "shasum": ""
             },

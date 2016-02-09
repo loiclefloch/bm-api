@@ -2,7 +2,7 @@
 
 namespace BookmarkManager\ApiBundle\Controller;
 
-use BookmarkManager\ApiBundle\Tool\WebsiteCrawler;
+use BookmarkManager\ApiBundle\Crawler\WebsiteCrawler;
 use BookmarkManager\ApiBundle\Utils\BookmarkUtils;
 use FOS\RestBundle\Controller\Annotations\View;
 use FOS\RestBundle\Request\ParamFetcher;

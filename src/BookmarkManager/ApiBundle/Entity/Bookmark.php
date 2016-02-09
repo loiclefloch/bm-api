@@ -79,6 +79,16 @@ class Bookmark
     private $title;
 
     /**
+     * @var string
+     *
+     * @ORM\Column(name="icon", type="string", length=255, nullable=true)
+     *
+     * @Expose
+     * @Groups({"list","alone"})
+     */
+    private $icon;
+
+    /**
      * @var text
      *
      * @ORM\Column(name="notes", type="text", nullable=true)
@@ -269,6 +279,29 @@ class Bookmark
     }
 
     /**
+     * Set title
+     *
+     * @param string $icon
+     * @return Bookmark
+     */
+    public function setIcon($icon)
+    {
+        $this->icon = $icon;
+
+        return $this;
+    }
+
+    /**
+     * Get icon
+     *
+     * @return string
+     */
+    public function getIcon()
+    {
+        return $this->icon;
+    }
+
+    /**
      * Set description
      *
      * @param string $description
@@ -393,6 +426,29 @@ class Bookmark
     public function getNotes()
     {
         return $this->notes;
+    }
+
+    /**
+     * Set notes
+     *
+     * @param string $content
+     * @return Bookmark
+     */
+    public function setContent($content)
+    {
+        $this->content = $content;
+
+        return $this;
+    }
+
+    /**
+     * Get notes
+     *
+     * @return string
+     */
+    public function getContent()
+    {
+        return $this->content;
     }
 
     /**

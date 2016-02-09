@@ -9,7 +9,7 @@ use Nelmio\ApiDocBundle\Annotation\ApiDoc;
 use BookmarkManager\ApiBundle\DependencyInjection\BaseController;
 use BookmarkManager\ApiBundle\Entity\Bookmark;
 use BookmarkManager\ApiBundle\Annotation\ApiErrors;
-use BookmarkManager\ApiBundle\Tool\WebsiteCrawler;
+use BookmarkManager\ApiBundle\Crawler\WebsiteCrawler;
 use Symfony\Component\HttpFoundation\Response;
 
 /**

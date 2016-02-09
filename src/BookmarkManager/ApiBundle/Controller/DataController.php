@@ -9,7 +9,7 @@ use BookmarkManager\ApiBundle\Entity\Tag;
 use BookmarkManager\ApiBundle\Exception\BMErrorResponseException;
 use BookmarkManager\ApiBundle\Form\BookmarkType;
 use BookmarkManager\ApiBundle\Form\TagType;
-use BookmarkManager\ApiBundle\Tool\WebsiteCrawler;
+use BookmarkManager\ApiBundle\Crawler\WebsiteCrawler;
 use BookmarkManager\ApiBundle\Utils\BookmarkUtils;
 use BookmarkManager\ApiBundle\Utils\TagUtils;
 use FOS\RestBundle\Controller\Annotations\Get;

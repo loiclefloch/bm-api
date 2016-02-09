@@ -1,11 +1,13 @@
 <?php
 
-namespace BookmarkManager\ApiBundle\Tool;
+namespace BookmarkManager\ApiBundle\Crawler;
 
+use BookmarkManager\ApiBundle\Crawler\Plugin\GithubCrawlerPlugin;
 use BookmarkManager\ApiBundle\Entity\Bookmark;
 use BookmarkManager\ApiBundle\Entity\BookmarkType;
 use Exception;
 use Symfony\Component\DomCrawler\Crawler;
+use Readability\Readability;
 
 /**
  */
@@ -14,23 +16,19 @@ class WebsiteCrawler
 
     public function crawlWebsite(Bookmark $bookmark)
     {
+        $bookmark->setUrl($this->cleanUrl($bookmark->getUrl()));
+
         // TODO: Handle 404.
         $html = $this->get_data($bookmark->getUrl());
+        $crawler = new Crawler($html);
 
         if ($html) {
 
-            $crawler = new Crawler($html);
-
             try {
                 $title = trim($crawler->filter('head > title')->text());
-            }
-            catch (Exception $e) {
+            } catch (Exception $e) {
                 $title = 'Unknown title';
             }
-//            $description = $crawler->filter('meta[name="description"]');
-//            $ogTitle = $crawler->filter('meta[property="title"]');
-//            $ogType = null;
-//            $ogImage = null;
 
             // -- Meta name
 
@@ -111,29 +109,57 @@ class WebsiteCrawler
                 $bookmark->setType(BookmarkType::TYPE_WEBSITE);
             }
 
-//            var_dump($websiteInfo);
+            // -- Get website icon
+            $crawler->filter('link')->each(
+                function (Crawler $node) use ($bookmark) {
+                    $rel = $node->attr('rel');
+
+                    if ($rel == 'icon') {
+                        $href = $node->attr('href');
+                        $href = $this->getRealLink($href, $bookmark->getUrl());
+                        $bookmark->setIcon($href);
+                    }
+                }
+            );
 
             // TODO: Add $websiteInfo to a new entity.
 
-            // TODO: Add bookmark type: ARTICLE, VIDEO, IMAGE, MUSIC cf http://ogp.me/
+            // TODO: Add bookmark type: ARTICLE, VIDEO, IMAGE, MUSIC cf http://ogp.me/ + CODE (github)
 
             $bookmark->setTitle($title);
             $bookmark->setDescription($description);
         }
 
-        // TODO: add https://github.com/j0k3r/php-readability
-
         /*
-         * TODO: add custom crawler according to the website.
-         * For example, github.com we need to retrieve the README.md if it's
-         * the main page of a project.
-         * If the url end with .md, we need to get the content on
-         * the article.entry-content
-         * Github have specific anchor: href="#a" link to <a name="user-content-a">
+         * TODO: Custom crawler for websites.
          */
+        $crawlerPlugins = [
+            new GithubCrawlerPlugin(),
+        ];
+
+        foreach ($crawlerPlugins as $plugin) {
+            if ($plugin->matchUrl($bookmark->getUrl())) {
+                $bookmark = $plugin->parse($crawler, $bookmark);
+            }
+        }
+
+        // no plugin where used to get the website content, we use readability
+        if (strlen($bookmark->getContent()) == 0) {
+            $readability = new Readability($html, $bookmark->getUrl());
+            $result = $readability->init();
+
+            if ($result) {
+                $bookmark->setcontent($readability->getContent());
+            } else {
+                // no content where found.
+            }
+
+        }
+
+        $bookmark->setcontent($this->handleLinks($bookmark->getContent(), $bookmark->getUrl()));
 
         // TODO: remove scripts and html from content
-        // TODO: Add good urls to img and links
+
         // TODO: anchors: add prefix to all the id
 
         return $bookmark;
@@ -313,7 +339,7 @@ class WebsiteCrawler
     {
         // Add http prefix if not exists
         if (preg_match("#https?://#", $url) === 0) {
-            $url = 'http://'.$url;
+            $url = 'https://'.$url;
         }
 
         $QUERIES_TO_REMOVE = [
@@ -375,6 +401,16 @@ class WebsiteCrawler
         return "$scheme$user$pass$host$port$path$query$fragment";
     }
 
+    protected function getBaseUrl($url)
+    {
+        $parsed_url = parse_url($url);
+        $scheme = isset($parsed_url['scheme']) ? $parsed_url['scheme'].'://' : '';
+        $host = isset($parsed_url['host']) ? $parsed_url['host'] : '';
+        $port = isset($parsed_url['port']) ? ':'.$parsed_url['port'] : '';
+
+        return "$scheme$host$port";
+    }
+
     /**
      * Returns the value at the given key or null. If the value exists, the value is trim.
      * @param $key
@@ -399,5 +435,67 @@ class WebsiteCrawler
         return $data;
     }
 
+    protected function handleLinks($content, $url)
+    {
+        $crawler = new Crawler($content);
+
+        // -- Images
+        $crawler->filter('img')->each(
+            function ($imgCrawler) use ($url) {
+
+                $currentSrc = $imgCrawler->getNode(0)->getAttribute('src');
+                $newSrc = $this->getRealImgLink($currentSrc, $url);
+
+                if (strlen($newSrc) > 0) {
+                    $imgCrawler->getNode(0)->setAttribute('src', $newSrc);
+                }
+
+            }
+        );
+
+        // -- Links
+        $crawler->filter('a')->each(
+            function ($linkCrawler) use ($url) {
+
+                $currentSrc = $linkCrawler->getNode(0)->getAttribute('href');
+
+                $newSrc = $this->getRealLink($currentSrc, $url);
+                $linkCrawler->getNode(0)->setAttribute('href', $newSrc);
+            }
+        );
+
+        return $crawler->html();
+    }
+
+    protected function getRealImgLink($currentSrc, $url) {
+        $newSrc = $currentSrc;
+
+        if (strlen($currentSrc) > 0 && $currentSrc[0] === '/') {
+            $newSrc = $this->getBaseUrl($url).$currentSrc;
+        } else {
+            if (preg_match("#https?://#", $currentSrc) === 0) { // relative link
+                $newSrc = $url.'/'.$currentSrc;
+            }
+        }
+
+        return $newSrc;
+    }
+
+    protected function getRealLink($currentSrc, $url) {
+        $newSrc = $currentSrc;
+
+        if (strlen($currentSrc) > 0 && $currentSrc[0] === '/') {
+            $newSrc = $this->getBaseUrl($url).$currentSrc;
+        } else {
+            if (preg_match("#https?://#", $currentSrc) === 0
+                && strlen($currentSrc) > 0
+                && $currentSrc[0] != '#'
+            ) { // relative link
+
+                $newSrc = $url.'/'.$currentSrc;
+            }
+        }
+        return $newSrc;
+    }
 
 }
