@@ -3,6 +3,9 @@
 namespace BookmarkManager\ApiBundle\Crawler;
 
 
+use BookmarkManager\ApiBundle\Entity\Bookmark;
+use Symfony\Component\DomCrawler\Crawler;
+
 abstract class CrawlerPlugin
 {
     /**
@@ -17,5 +20,5 @@ abstract class CrawlerPlugin
      * @return  $content
      * @internal param $html
      */
-    abstract public function parse($crawler, $bookmark);
+    abstract public function parse(Crawler $crawler, Bookmark $bookmark);
 }

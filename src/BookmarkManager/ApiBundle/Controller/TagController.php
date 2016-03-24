@@ -109,7 +109,23 @@ class TagController extends BaseController
             return $this->notFoundResponse();
         }
 
-        return $this->successResponse($tagEntity, Response::HTTP_OK);
+
+        // -- Get bookmarks
+
+        $repository = $this->getRepository('Bookmark');
+        $query = $repository->createQueryBuilder('u')
+            ->innerJoin('u.tags', 'g')
+            ->where('g.id = :tag_id')
+            ->setParameter('tag_id', $tagId)
+            ->getQuery()->getResult();
+
+        return $this->successResponse(
+            [
+                'tag' => $tagEntity,
+                'bookmarks' => $query
+            ],
+            Response::HTTP_OK
+        );
     }
 
     /**

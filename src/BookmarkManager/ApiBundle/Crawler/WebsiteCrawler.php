@@ -3,23 +3,50 @@
 namespace BookmarkManager\ApiBundle\Crawler;
 
 use BookmarkManager\ApiBundle\Crawler\Plugin\GithubCrawlerPlugin;
+use BookmarkManager\ApiBundle\Crawler\Plugin\ImageCrawlerPlugin;
+use BookmarkManager\ApiBundle\Crawler\Plugin\SlideshareCrawlerPlugin;
 use BookmarkManager\ApiBundle\Entity\Bookmark;
 use BookmarkManager\ApiBundle\Entity\BookmarkType;
+use BookmarkManager\ApiBundle\Entity\User;
+use BookmarkManager\ApiBundle\Utils\StringUtils;
 use Exception;
 use Symfony\Component\DomCrawler\Crawler;
-use Readability\Readability;
+use BookmarkManager\ApiBundle\Crawler\Readability\Readability;
 
 /**
  */
 class WebsiteCrawler
 {
+    /**
+     * Number of occurrences find for a tag name on the bookmark text content to set the tag.
+     * This value is completely arbitrary.
+     * TODO: Run tests to find an appreciable value.
+     */
+    const NB_OCCURRENCES_TO_SET_TAG = 3;
 
-    public function crawlWebsite(Bookmark $bookmark)
+    /**
+     * @param Bookmark $bookmark
+     * @param User $user
+     * @return Bookmark
+     */
+    public function crawlWebsite(Bookmark $bookmark, User $user)
     {
         $bookmark->setUrl($this->cleanUrl($bookmark->getUrl()));
 
-        // TODO: Handle 404.
         $html = $this->get_data($bookmark->getUrl());
+        
+        return $this->crawlWebsiteWithHtml($bookmark, $html, $user);
+    }
+
+    /**
+     * @param Bookmark $bookmark
+     * @param string $html
+     * @param User $user
+     * @return Bookmark
+     */
+    public function crawlWebsiteWithHtml(Bookmark $bookmark, $html = "", User $user = null)
+    {
+        $bookmark->setUrl($this->cleanUrl($bookmark->getUrl()));
         $crawler = new Crawler($html);
 
         if ($html) {
@@ -87,26 +114,27 @@ class WebsiteCrawler
 
             // -- Select the best description
             if ($websiteInfo['description'] === null or strlen($websiteInfo['description']) === 0) {
-                $description = $ogData['data']['og:description'];
+                $description = $ogData->getDescription();
             } else {
                 $description = $websiteInfo['description'];
             }
 
             // -- Retrieve the bookmark type
             $types = [
-                'website' => BookmarkType::TYPE_WEBSITE,
-                'article' => BookmarkType::TYPE_ARTICLE,
-                'video' => BookmarkType::TYPE_VIDEO,
-                'music' => BookmarkType::TYPE_MUSIC,
+                'website' => BookmarkType::WEBSITE,
+                'article' => BookmarkType::ARTICLE,
+                'video' => BookmarkType::VIDEO,
+                'music' => BookmarkType::MUSIC,
             ];
 
-            if (isset($ogData['data']['og:type'])
-                && $ogData['data']['og:type'] != null
-                && isset($types[$ogData['data']['og:type']])
+            // set bookmark type according to the og:type
+            if ($ogData->getType() != null
+                && $ogData->getType() != null
+                && isset($types[$ogData->getType()])
             ) {
-                $bookmark->setType($types[$ogData['data']['og:type']]);
-            } else {
-                $bookmark->setType(BookmarkType::TYPE_WEBSITE);
+                $bookmark->setType($types[$ogData->getType()]);
+            } else { // by default, the bookmark will be a WEBSITE
+                $bookmark->setType(BookmarkType::WEBSITE);
             }
 
             // -- Get website icon
@@ -114,7 +142,11 @@ class WebsiteCrawler
                 function (Crawler $node) use ($bookmark) {
                     $rel = $node->attr('rel');
 
-                    if ($rel == 'icon') {
+                    if ($rel == 'icon'
+                        || $rel == 'shortcut icon'
+                        || $rel == 'apple-touch-icon'
+                    ) {
+
                         $href = $node->attr('href');
                         $href = $this->getRealLink($href, $bookmark->getUrl());
                         $bookmark->setIcon($href);
@@ -124,17 +156,29 @@ class WebsiteCrawler
 
             // TODO: Add $websiteInfo to a new entity.
 
-            // TODO: Add bookmark type: ARTICLE, VIDEO, IMAGE, MUSIC cf http://ogp.me/ + CODE (github)
+            // -- set preview picture
+            $ogImage = $ogData->getImage();
+            if ($ogImage !== null && strlen($ogImage) > 0) {
+                $bookmark->setPreviewPicture($ogImage);
+            }
 
             $bookmark->setTitle($title);
             $bookmark->setDescription($description);
         }
 
+        // -----------------
+        // Handle content
+        // -----------------
+
         /*
-         * TODO: Custom crawler for websites.
+         * Custom crawler for websites.
          */
+
+        // Register crawler plugins
         $crawlerPlugins = [
+            new ImageCrawlerPlugin(),
             new GithubCrawlerPlugin(),
+            new SlideshareCrawlerPlugin(),
         ];
 
         foreach ($crawlerPlugins as $plugin) {
@@ -143,70 +187,69 @@ class WebsiteCrawler
             }
         }
 
-        // no plugin where used to get the website content, we use readability
+        // no plugin where used to get the website content or the plugin did not handle the content, so we use readability
         if (strlen($bookmark->getContent()) == 0) {
             $readability = new Readability($html, $bookmark->getUrl());
-            $result = $readability->init();
+            $success = $readability->init();
 
-            if ($result) {
-                $bookmark->setcontent($readability->getContent());
+            if ($success) {
+                $bookmark->setContent($readability->getContent()->innerHTML);
             } else {
                 // no content where found.
             }
 
         }
 
-        $bookmark->setcontent($this->handleLinks($bookmark->getContent(), $bookmark->getUrl()));
+        // -- automatic tags
+        if ($user != null) {
+            $tagsFound = $this->findTagsOnText($user->getTags()->toArray(), $bookmark->getContent());
+            $bookmark->addTags($tagsFound);
+        }
 
-        // TODO: remove scripts and html from content
+        // -- handle links on the content
+        $bookmark->setContent($this->handleLinks($bookmark->getContent(), $bookmark->getUrl()));
 
-        // TODO: anchors: add prefix to all the id
+        // TODO: replace img links by data:image/ ? Cf CrawlerUtils::picturesToBase64
+
+        // TODO: remove scripts and css from content
+
+        $bookmark->setContent($this->handleAnchors($bookmark->getContent()));
+
+
+        $bookmark->setContent(Encoding::fixUTF8($bookmark->getContent()));
 
         return $bookmark;
     }
 
+    /**
+     * @param $html
+     * @return OgData
+     */
     public function handleOg($html)
     {
-        $crawler = new Crawler($html);
-
-        // -- Meta property
-
-        $metaPropertyCrawler = $crawler->filter('head > meta')->reduce(
-            function (Crawler $node) {
-                $propertyValue = $node->attr('property');
-
-                // We get all non null meta with a name or a property
-                return null !== $propertyValue && null !== $node->attr('content');
-            }
-        );
-
-        $metaProperties = [];
-        foreach ($metaPropertyCrawler as $item) {
-            $name = $item->getAttribute('property');
-            $content = $item->getAttribute('content');
-
-            $metaProperties[$name] = $content;
-        }
+        $metaProperties = $this->getMetaPropertiesFromHtml($html);
 
         // -- Handle basic info
 
-        $websiteInfo = [
-            'og:title' => null,
-            'og:type' => 'website', // Any non-marked up webpage should be treated as og:type website.
-            'og:image' => null,
-            'og:description' => null,
-        ];
+        $websiteInfo = new OgData();
 
         // -- Handle basic og information See http://ogp.me/
-        $websiteInfo['og:title'] = $this->array_get_key('og:title', $metaProperties);
-        $websiteInfo['og:image'] = $this->array_get_key('og:image', $metaProperties);
+        $websiteInfo->setTitle($this->array_get_key('og:title', $metaProperties));
+        $websiteInfo->setImage($this->array_get_key('og:image', $metaProperties));
 
-        $websiteInfo['og:description'] = $this->array_get_key('og:description', $metaProperties);
+        $websiteInfo->setDescription($this->array_get_key('og:description', $metaProperties));
 
         $ogType = $this->array_get_key('og:type', $metaProperties);
         if (null != $ogType) { // do not override default value ('website')
-            $websiteInfo['og:type'] = $ogType;
+            $websiteInfo->setType($ogType);
         }
+
+        return $websiteInfo;
+    }
+
+    public function handleOgDetailsForType($ogType, $html)
+    {
+        $metaProperties = $this->getMetaPropertiesFromHtml($html);
 
         // -- Handle detail info
 
@@ -220,7 +263,6 @@ class WebsiteCrawler
          * String
          * URL
          */
-
         $keysOgByType = [
             'article' => [
                 'article:published_time', // datetime - When the article was first published.
@@ -317,18 +359,15 @@ class WebsiteCrawler
 
         // -- populate detail.
         // TODO: handle nested object such as article:author.
-        if (isset($websiteInfo['og:type']) && isset($keysOgByType[$websiteInfo['og:type']])) {
-            foreach ($keysOgByType[$websiteInfo['og:type']] as $value) {
+        if ($ogType != null) {
+            foreach ($keysOgByType[$ogType] as $value) {
                 $detail[$value] = $this->array_get_key($value, $metaProperties);
             }
         }
 
-        return [
-            'data' => $websiteInfo,
-            'detail' => $detail,
-        ];
-    }
+        return $detail;
 
+    }
 
     /**
      * Remove useless query parameters from url
@@ -348,6 +387,7 @@ class WebsiteCrawler
             'utm_term',
             'utm_content',
             'utm_campaign',
+            'ref',
         ];
 
         $parsedUrl = parse_url($url);
@@ -415,24 +455,31 @@ class WebsiteCrawler
      * Returns the value at the given key or null. If the value exists, the value is trim.
      * @param $key
      * @param $array
+     * @param null $default
      * @return null|string
      */
-    protected function array_get_key($key, $array)
+    protected function array_get_key($key, $array, $default = null)
     {
-        return isset($array[$key]) ? trim($array[$key]) : null;
+        if (isset($array[$key])) {
+            $value = $array[$key];
+            if (isset($value)) {
+                if (is_string($value)) {
+                    return trim($value);
+                }
+
+                return $value;
+            }
+        }
+
+        return $default;
     }
 
     protected function get_data($url)
     {
-        $ch = curl_init();
         $timeout = 15;
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $timeout);
-        $data = curl_exec($ch);
-        curl_close($ch);
+        $html = CrawlerUtils::getExternalFile($url, $timeout);
 
-        return $data;
+        return $html;
     }
 
     protected function handleLinks($content, $url)
@@ -464,11 +511,28 @@ class WebsiteCrawler
             }
         );
 
-        return $crawler->html();
+        try {
+            return $crawler->html();
+        } catch (\InvalidArgumentException $e) {
+
+        }
+
+        return $content;
     }
 
-    protected function getRealImgLink($currentSrc, $url) {
+    /**
+     * @param $currentSrc
+     * @param $url
+     * @return string
+     */
+    protected function getRealImgLink($currentSrc, $url)
+    {
         $newSrc = $currentSrc;
+
+        /* return if already absolute URL */
+        if (parse_url($currentSrc, PHP_URL_SCHEME) != '') {
+            return $currentSrc;
+        }
 
         if (strlen($currentSrc) > 0 && $currentSrc[0] === '/') {
             $newSrc = $this->getBaseUrl($url).$currentSrc;
@@ -481,8 +545,38 @@ class WebsiteCrawler
         return $newSrc;
     }
 
-    protected function getRealLink($currentSrc, $url) {
+    protected function getRealLink($currentSrc, $url)
+    {
         $newSrc = $currentSrc;
+
+        // -- Handle specific href.
+
+        $prefixesStartWithToIgnore = [
+            "tel:",
+            "mailto:",
+            "ftp:",
+            "#",
+        ];
+
+        foreach ($prefixesStartWithToIgnore as $prefixToIgnore) {
+
+            if (StringUtils::startsWith($currentSrc, $prefixToIgnore)) {
+
+                // The url just contains the prefix. It's not a valid url, so we remove it.
+                if (strlen($currentSrc) === strlen($prefixToIgnore)) {
+                    // cf http://www.ietf.org/rfc/rfc2396.txt
+                    // "A URI reference that does not contain a URI is a reference to the current document.
+                    // In other words an empty URI reference within a document is interpreted as a reference
+                    // to the start of that document"
+                    return "";
+                }
+
+                return $currentSrc;
+            }
+
+        }
+
+        // -- Handle page link (simple link)
 
         if (strlen($currentSrc) > 0 && $currentSrc[0] === '/') {
             $newSrc = $this->getBaseUrl($url).$currentSrc;
@@ -495,7 +589,106 @@ class WebsiteCrawler
                 $newSrc = $url.'/'.$currentSrc;
             }
         }
+
         return $newSrc;
+    }
+
+    protected function handleAnchors($content)
+    {
+        $crawler = new Crawler($content);
+
+        $crawler->filter('h1, h2, h3, h4, h5')->each(
+            function ($titleNode) {
+
+                $currentId = $titleNode->getNode(0)->getAttribute('id');
+                $title = $titleNode->getNode(0)->nodeValue;
+
+                if (strlen($currentId) == 0) {
+                    $titleAsId = preg_replace("/[^A-Za-z0-9]/", '', $title); // keep just alphanumeric chars
+                    $newId = $titleAsId.'_'.md5(uniqid(time().'_', true)); // generate unique identifier
+                    $titleNode->getNode(0)->setAttribute('id', $newId);
+                }
+
+            }
+        );
+
+        try {
+            return $crawler->html();
+        } catch (\InvalidArgumentException $e) {
+
+        }
+
+        return $content;
+    }
+
+    public function findTagsOnText(Array $tags, $text)
+    {
+
+        $found = [];
+
+        // -- remove html. Keep only the text.
+        $crawler = new Crawler($text);
+        $text = $crawler->text();
+
+        foreach ($tags as $tag) {
+
+            $nbOccurrences = $this->findNumberOfOccurrencesOfStringOnText($tag->getName(), $text);
+
+            if ($nbOccurrences >= WebsiteCrawler::NB_OCCURRENCES_TO_SET_TAG) {
+                $found[] = $tag;
+            }
+        }
+
+        return $found;
+    }
+
+    public function findNumberOfOccurrencesOfStringOnText($toFind, $text)
+    {
+
+        // disable case-sensitive
+        $toFind = strtolower($toFind);
+        $text = strtolower($text);
+
+        return substr_count($text, $toFind);
+    }
+
+    public function findStringOnText($toFind, $text)
+    {
+
+        // disable case-sensitive
+        $toFind = strtolower($toFind);
+        $text = strtolower($text);
+
+        if (strpos($text, $toFind) !== false) {
+            return true;
+        }
+
+        return false;
+    }
+
+    public function getMetaPropertiesFromHtml($html) {
+        $crawler = new Crawler($html);
+
+        // -- Meta property
+
+        $metaPropertyCrawler = $crawler->filter('head > meta')->reduce(
+            function (Crawler $node) {
+                $propertyValue = $node->attr('property');
+
+                // We get all non null meta with a name or a property
+                return null !== $propertyValue && null !== $node->attr('content');
+            }
+        );
+
+        $metaProperties = [];
+        foreach ($metaPropertyCrawler as $item) {
+            $name = $item->getAttribute('property');
+            $content = $item->getAttribute('content');
+
+            $metaProperties[$name] = $content;
+        }
+
+        return $metaProperties;
     }
 
 }

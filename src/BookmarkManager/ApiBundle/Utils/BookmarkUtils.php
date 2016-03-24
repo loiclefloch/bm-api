@@ -8,12 +8,15 @@
 
 namespace BookmarkManager\ApiBundle\Utils;
 
+use BookmarkManager\ApiBundle\Crawler\CrawlerNotFoundException;
+use BookmarkManager\ApiBundle\Crawler\CrawlerRetrieveDataException;
 use BookmarkManager\ApiBundle\Entity\Bookmark;
 use BookmarkManager\ApiBundle\Entity\Tag;
-use BookmarkManager\ApiBundle\Exception\BMErrorResponseException;
+use BookmarkManager\ApiBundle\Exception\BmErrorResponseException;
 use BookmarkManager\ApiBundle\Form\BookmarkType;
 use BookmarkManager\ApiBundle\Form\TagType;
 use BookmarkManager\ApiBundle\Crawler\WebsiteCrawler;
+use Symfony\Component\Config\Definition\Exception\Exception;
 use Symfony\Component\HttpFoundation\Response;
 
 class BookmarkUtils
@@ -29,6 +32,7 @@ class BookmarkUtils
      * @param $controller
      * @param $data
      * @return Tag
+     * @throws BMAlreadyExistsException
      * @throws BMErrorResponseException
      */
     public static function createBookmark($controller, $data)
@@ -66,7 +70,12 @@ class BookmarkUtils
             }
 
             $bookmarkEntity->setUrl($url);
-            $bookmarkEntity = $crawler->crawlWebsite($bookmarkEntity);
+            $bookmarkEntity = $crawler->crawlWebsite($bookmarkEntity, $controller->getUser());
+
+            if ($bookmarkEntity === null) {
+                return null;
+            }
+
             $bookmarkEntity->setOwner($controller->getUser());
 
             // -- set tags
@@ -106,7 +115,8 @@ class BookmarkUtils
     }
 
 
-    public static function testCrawler($controller, $data) {
+    public static function testCrawler($controller, $data)
+    {
         $bookmarkEntity = new Bookmark();
 
         $form = $controller->createForm(
@@ -125,15 +135,17 @@ class BookmarkUtils
         }
 
         $bookmarkEntity->setUrl($url);
-        $bookmarkEntity = $crawler->crawlWebsite($bookmarkEntity);
+
+        $bookmarkEntity = $crawler->crawlWebsite($bookmarkEntity, $controller->getUser());
 
         return $bookmarkEntity;
     }
 
-    public static function getBookmarkForUrl($controller, $url) {
+    public static function getBookmarkForUrl($controller, $url)
+    {
 
         $crawler = new WebsiteCrawler();
-        $url = $crawler->cleanUrl($bookmarkEntity->getUrl());
+        $url = $crawler->cleanUrl($url);
 
         if (filter_var($url, FILTER_VALIDATE_URL) === false) {
             throw new BmErrorResponseException(102, "Invalid url", Response::HTTP_BAD_REQUEST);
@@ -148,5 +160,29 @@ class BookmarkUtils
         );
 
         return $exists;
+    }
+
+
+    /**
+     * For a given text, we calculate reading time for an article
+     * based on 200 words per minute.
+     *
+     * @param $text
+     *
+     * @return float
+     */
+    public static function getReadingTime($text)
+    {
+        if (!strlen($text)) {
+            return 1;
+        }
+        $words = str_word_count(strip_tags($text));
+        $min = floor($words / 200);
+
+        if ($min == 0) {
+            return 1;
+        }
+
+        return $min;
     }
 }

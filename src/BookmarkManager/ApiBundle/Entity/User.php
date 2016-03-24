@@ -17,6 +17,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 
 use BookmarkManager\ApiBundle\Entity\Bookmark;
+use BookmarkManager\ApiBundle\Entity\Tag;
 
 /**
  * @ORM\Entity
@@ -79,6 +80,8 @@ class User extends BaseUser
      */
     private $tags;
 
+    // ----------------------------------------------------------------------------------------------------------------
+    // LIFECYCLE
     // ----------------------------------------------------------------------------------------------------------------
 
     public function __construct()
@@ -156,6 +159,8 @@ class User extends BaseUser
         return false;
     }
 
+    // ----------------------------------------------------------------------------------------------------------------
+    // GETTERS & SETTERS
     // ----------------------------------------------------------------------------------------------------------------
 
     /**
@@ -258,12 +263,12 @@ class User extends BaseUser
     /**
      * Add bookmarks
      *
-     * @param \BookmarkManager\ApiBundle\Entity\Bookmark $bookmarks
+     * @param Bookmark $bookmark
      * @return User
      */
-    public function addBookmark(\BookmarkManager\ApiBundle\Entity\Bookmark $bookmarks)
+    public function addBookmark(Bookmark $bookmark)
     {
-        $this->bookmarks[] = $bookmarks;
+        $this->bookmarks[] = $bookmark;
 
         return $this;
     }
@@ -271,11 +276,11 @@ class User extends BaseUser
     /**
      * Remove bookmarks
      *
-     * @param \BookmarkManager\ApiBundle\Entity\Bookmark $bookmarks
+     * @param Bookmark $bookmark
      */
-    public function removeBookmark(\BookmarkManager\ApiBundle\Entity\Bookmark $bookmarks)
+    public function removeBookmark(Bookmark $bookmark)
     {
-        $this->bookmarks->removeElement($bookmarks);
+        $this->bookmarks->removeElement($bookmark);
     }
 
     /**
@@ -291,12 +296,12 @@ class User extends BaseUser
     /**
      * Add tags
      *
-     * @param \BookmarkManager\ApiBundle\Entity\Tag $tags
+     * @param \BookmarkManager\ApiBundle\Entity\Tag $tag
      * @return User
      */
-    public function addTag(\BookmarkManager\ApiBundle\Entity\Tag $tags)
+    public function addTag(Tag $tag)
     {
-        $this->tags[] = $tags;
+        $this->tags[] = $tag;
 
         return $this;
     }
@@ -304,11 +309,11 @@ class User extends BaseUser
     /**
      * Remove tags
      *
-     * @param \BookmarkManager\ApiBundle\Entity\Tag $tags
+     * @param Tag $tag
      */
-    public function removeTag(\BookmarkManager\ApiBundle\Entity\Tag $tags)
+    public function removeTag(Tag $tag)
     {
-        $this->tags->removeElement($tags);
+        $this->tags->removeElement($tag);
     }
 
     /**

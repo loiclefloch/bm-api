@@ -44,15 +44,16 @@ class SearchController extends BaseController
      *      { 102, "Resource not found" }
      * })
      *
-     * @param ParamFetcher $params
+     * @param ParamFetcher $paramsFetcher
      * @return Response
+     * @internal param ParamFetcher $params
      */
-    public function getSearchBookmarksAction(ParamFetcher $params)
+    public function getSearchBookmarksAction(ParamFetcher $paramsFetcher)
     {
         $max_results_limit = $this->container->getParameter('max_results_limit');
         $default_results_limit = $this->container->getParameter('default_results_limit');
 
-        $params = $params->all();
+        $params = $paramsFetcher->all();
 
         $paging = array(
             'page' => $params['page'],
@@ -90,17 +91,17 @@ class SearchController extends BaseController
 
         $paging['offset'] = (($paging['page'] - 1) * $paging['limit']);
 
-        $query = $this->getRepository('Bookmark')->createQueryBuilder('p');
+        $builder = $this->getRepository('Bookmark')->createQueryBuilder('p');
 
         if (isset($params['name']) && $params['name'] != null && !empty($params['name'])) {
-            $query
-                ->where($query->expr()->like('p.name', ':name'))
+            $builder
+                ->where($builder->expr()->like('p.name', ':name'))
                 ->setParameter('name', '%'.$params['name'].'%');
         }
 
         if (isset($params['url']) && $params['url'] != null && !empty($params['url'])) {
-            $query
-                ->andWhere($query->expr()->like('p.url', ':url'))
+            $builder
+                ->andWhere($builder->expr()->like('p.url', ':url'))
                 ->setParameter('url', '%'.$params['url'].'%');
         }
 
@@ -118,7 +119,7 @@ class SearchController extends BaseController
             }
 
             foreach ($tagsName as $tagName) {
-                $query
+                $builder
                     ->leftJoin('p.tags', 't')
                     ->andWhere('t.name = :name')
                     ->setParameter('name', $tagName);
@@ -126,18 +127,19 @@ class SearchController extends BaseController
         }
 
         // -- Select only the user's bookmarks
-        $query
+        $builder
             ->leftJoin('p.owner', 'u')
             ->andWhere('u.id = :owner')
             ->setParameter('owner', $this->getUser()->getId());
 
+
         // -- Count total number of result.
-        $countQuery = clone($query);
+        $countQuery = clone($builder);
         $countQuery = $countQuery->select('COUNT(p)')->getQuery();
         $paging['total'] = intval($countQuery->getSingleScalarResult());
 
         // -- Set limit to the query
-        $query = $query->setFirstResult($paging['offset'])
+        $query = $builder->setFirstResult($paging['offset'])
             ->setMaxResults($paging['limit'])
             ->orderBy('p.createdAt', 'DESC')
             ->getQuery();

@@ -3,6 +3,8 @@
 namespace BookmarkManager\ApiBundle\Controller;
 
 use BookmarkManager\ApiBundle\Annotation\ApiErrors;
+use BookmarkManager\ApiBundle\Crawler\CrawlerNotFoundException;
+use BookmarkManager\ApiBundle\Crawler\CrawlerRetrieveDataException;
 use BookmarkManager\ApiBundle\DependencyInjection\BaseController;
 use BookmarkManager\ApiBundle\Entity\Bookmark;
 use BookmarkManager\ApiBundle\Entity\Tag;
@@ -12,6 +14,7 @@ use BookmarkManager\ApiBundle\Form\TagType;
 use BookmarkManager\ApiBundle\Crawler\WebsiteCrawler;
 use BookmarkManager\ApiBundle\Utils\BookmarkUtils;
 use BookmarkManager\ApiBundle\Utils\TagUtils;
+use Exception;
 use FOS\RestBundle\Controller\Annotations as Rest;
 use FOS\RestBundle\Request\ParamFetcher;
 use Symfony\Component\HttpFoundation\Request;
@@ -80,11 +83,23 @@ class DataController extends BaseController
         foreach ($bookmarks as $bookmarkData) {
 
             try {
+
                 $bookmarkEntity = BookmarkUtils::createBookmark($this, $bookmarkData);
-                $newBookmarks[] = $bookmarkEntity;
+
+                if ($bookmarkEntity !== null) {
+                    $newBookmarks[] = $bookmarkEntity;
+                } else {
+                    $this->getLogger()->warning('[IMPORT] Can\'t create bookmark: '.$bookmarkData['url']);
+                }
+            } catch (CrawlerNotFoundException $e) {
+                $this->getLogger()->info('[IMPORT] 404 for '.$bookmarkData['url']);
+            } catch (CrawlerRetrieveDataException $e) {
+                $this->getLogger()->info('[IMPORT] Impossible to retrieve the website content for '.$bookmarkData['url']);
             } catch (BMErrorResponseException $e) {
                 // do nothing
-                $this->getLogger()->info('Catch exception '.$e->getMessage());
+                $this->getLogger()->info('[IMPORT] Catch exception for '.$bookmarkData['url'].' - '.$e->getMessage());
+            } catch (Exception $e) {
+                $this->getLogger()->info('[IMPORT] Unknown error  for '.$bookmarkData['url']);
             }
 
         }
@@ -95,6 +110,52 @@ class DataController extends BaseController
                     'bookmarks' => count($newBookmarks),
                     'tags' => count($newTags),
                 ],
+            ],
+            Response::HTTP_OK
+        );
+    }
+
+    /**
+     * Import json file. Just to test the request. Do nothing
+     *
+     * @Rest\Post("/data/import/test")
+     *
+     * @ApiDoc(
+     *  description="Test import upload",
+     *  statusCodes={
+     *      200="Returned when successful."
+     *  }
+     * )
+     *
+     * @ApiErrors({
+     *     { 101, "Invalid file" },
+     *     { 102, "Invalid version" }
+     * })
+     *
+     * @param Request $request
+     * @return Response
+     */
+    public function postDataImportTestAction(Request $request)
+    {
+        $data = $request->request->all();
+
+        if (!isset($data['version']) || !isset($data['tags']) || !isset($data['bookmarks'])) {
+            return $this->errorResponse(101, "Invalid file");
+        }
+
+        $version = $data['version'];
+        $tags = $data['tags'];
+        $bookmarks = $data['bookmarks'];
+
+        if (!is_numeric($version)) {
+            return $this->errorResponse(102, "Invalid version");
+        }
+
+        return $this->successResponse(
+            [
+                'version' => $version,
+                'tags' => $tags,
+                'bookmarks' => $bookmarks,
             ],
             Response::HTTP_OK
         );

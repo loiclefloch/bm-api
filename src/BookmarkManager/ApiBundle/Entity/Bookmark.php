@@ -2,6 +2,7 @@
 
 namespace BookmarkManager\ApiBundle\Entity;
 
+use BookmarkManager\ApiBundle\Utils\BookmarkUtils;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -10,6 +11,9 @@ use \BookmarkManager\ApiBundle\Entity\User;
 use JMS\Serializer\Annotation\ExclusionPolicy;
 use JMS\Serializer\Annotation\Expose;
 use JMS\Serializer\Annotation\Groups;
+use JMS\Serializer\Annotation\SerializedName;
+use JMS\Serializer\Annotation\Type;
+use JMS\Serializer\Annotation\VirtualProperty;
 
 /**
  * Define the different type of bookmark. Can be found by looking the og:type website meta.
@@ -19,10 +23,14 @@ use JMS\Serializer\Annotation\Groups;
  */
 class BookmarkType
 {
-    const TYPE_WEBSITE = 0; // default
-    const TYPE_ARTICLE = 1;
-    const TYPE_VIDEO = 2;
-    const TYPE_MUSIC = 3;
+    const WEBSITE = 0; // default
+    const ARTICLE = 1;
+    const VIDEO = 2;
+    const MUSIC = 3;
+    const CODE = 4; // for example: github code page or project
+    const GAME = 5;
+    const SLIDE = 6;
+    const IMAGE = 7;
 }
 
 /**
@@ -162,6 +170,30 @@ class Bookmark
      */
     private $updatedAt;
 
+    /**
+     * @var string
+     *
+     * @ORM\Column(name="preview_picture", type="text", nullable=true)
+     *
+     * @Expose
+     * @Groups({"list", "alone"})
+     */
+    private $previewPicture;
+
+    /**
+     * @VirtualProperty
+     * @Type("string")
+     * @SerializedName("reading_time")
+     * @Groups({"list","alone"})
+     *
+     * @return float
+     */
+    public function getReadingTime() {
+        return BookmarkUtils::getReadingTime($this->getContent());
+    }
+
+    // ----------------------------------------------------------------------------------------------------------------
+    // LIFECYCLE
     // ----------------------------------------------------------------------------------------------------------------
 
     /**
@@ -170,7 +202,7 @@ class Bookmark
     public function __construct()
     {
         $this->tags = new ArrayCollection();
-        $this->type = BookmarkType::TYPE_WEBSITE;
+        $this->type = BookmarkType::WEBSITE;
     }
 
     /**
@@ -188,6 +220,10 @@ class Bookmark
         }
     }
 
+    // ----------------------------------------------------------------------------------------------------------------
+    // TOOLS
+    // ----------------------------------------------------------------------------------------------------------------
+
     /**
      * @param \BookmarkManager\ApiBundle\Entity\Tag $tag
      * @return bool
@@ -197,6 +233,8 @@ class Bookmark
         return $this->tags->indexOf($tag) !== false;
     }
 
+    // ----------------------------------------------------------------------------------------------------------------
+    // GETTERS & SETTERS
     // ----------------------------------------------------------------------------------------------------------------
 
     /**
@@ -385,6 +423,17 @@ class Bookmark
         return $this;
     }
 
+    public function addTags($tagsFound)
+    {
+        foreach ($tagsFound as $tag) {
+            if (!$this->haveTag($tag)) {
+                $this->tags[] = $tag;
+            }
+        }
+
+        return $this;
+    }
+
     /**
      * Remove tags
      *
@@ -486,4 +535,21 @@ class Bookmark
     {
         return $this->updatedAt;
     }
+
+    /**
+     * @return mixed
+     */
+    public function getPreviewPicture()
+    {
+        return $this->previewPicture;
+    }
+
+    /**
+     * @param mixed $previewPicture
+     */
+    public function setPreviewPicture($previewPicture)
+    {
+        $this->previewPicture = $previewPicture;
+    }
+
 }

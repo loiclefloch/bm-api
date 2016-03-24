@@ -2,8 +2,11 @@
 
 namespace BookmarkManager\ApiBundle\Controller;
 
+use BookmarkManager\ApiBundle\Crawler\CrawlerNotFoundException;
+use BookmarkManager\ApiBundle\Crawler\CrawlerRetrieveDataException;
 use BookmarkManager\ApiBundle\Crawler\WebsiteCrawler;
 use BookmarkManager\ApiBundle\Utils\BookmarkUtils;
+use Exception;
 use FOS\RestBundle\Controller\Annotations\View;
 use FOS\RestBundle\Request\ParamFetcher;
 use FOS\RestBundle\Controller\Annotations as Rest;
@@ -137,7 +140,9 @@ class BookmarkController extends BaseController
      * @ApiErrors({
      *      { 400, "The validation of the object failed. Check the message for more details." },
      *      { 101, "Bookmark already exists with the given url." },
-     *      { 102, "Invalid url" }
+     *      { 102, "Invalid url" },
+     *     { 103, "Impossible to retrieve the website content."},
+     *     { 104, "Unknown error when create the bookmark" },
      * })
      *
      * @param Request $request
@@ -146,7 +151,22 @@ class BookmarkController extends BaseController
     public function postBookmarkAction(Request $request)
     {
         $data = $request->request->all();
-        $bookmarkEntity = BookmarkUtils::createBookmark($this, $data);
+
+        try {
+            $bookmarkEntity = BookmarkUtils::createBookmark($this, $data);
+        } catch (CrawlerNotFoundException $e) {
+            $this->getLogger()->info('[IMPORT] 404 for '.$data['url']);
+
+            return $this->notFoundResponse();
+        } catch (CrawlerRetrieveDataException $e) {
+            $this->getLogger()->info('[IMPORT] Impossible to retrieve the website content for '.$data['url']);
+
+            return $this->errorResponse(103, 'Impossible to retrieve the website content.', Response::HTTP_BAD_REQUEST);
+        } catch (Exception $e) {
+            $this->getLogger()->info('[IMPORT] Unknown error  for '.$data['url']);
+
+            return $this->errorResponse(104, 'Unknown error', Response::HTTP_BAD_REQUEST);
+        }
 
         return $this->successResponse($bookmarkEntity, Response::HTTP_CREATED);
     }
@@ -548,7 +568,22 @@ class BookmarkController extends BaseController
     public function postCrawlerTestAction(Request $request)
     {
         $data = $request->request->all();
-        $bookmarkEntity = BookmarkUtils::testCrawler($this, $data);
+
+        try {
+            $bookmarkEntity = BookmarkUtils::testCrawler($this, $data);
+        } catch (CrawlerNotFoundException $e) {
+            $this->getLogger()->info('[IMPORT] 404 for '.$data['url']);
+
+            return $this->notFoundResponse();
+        } catch (CrawlerRetrieveDataException $e) {
+            $this->getLogger()->info('[IMPORT] Impossible to retrieve the website content for '.$data['url']);
+
+            return $this->errorResponse(103, 'Impossible to retrieve the website content.', Response::HTTP_BAD_REQUEST);
+        } catch (Exception $e) {
+            $this->getLogger()->info('[IMPORT] Unknown error  for '.$data['url']);
+
+            return $this->errorResponse(104, 'Unknown error', Response::HTTP_BAD_REQUEST);
+        }
 
         return $this->successResponse($bookmarkEntity, Response::HTTP_OK, ['alone']);
     }
