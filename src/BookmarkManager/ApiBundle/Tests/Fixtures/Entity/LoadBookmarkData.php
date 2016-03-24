@@ -58,11 +58,11 @@ class LoadBookmarkData extends AbstractFixture implements FixtureInterface
 
         $manager->flush();
 
-        $this->addReference('bm1', $bm1);
-        $this->addReference('bm2', $bm2);
-        $this->addReference('bmToDelete', $bmToDelete);
-        $this->addReference('bmToUpdate', $bmToUpdate);
-        $this->addReference('bmToAddTag', $bmToAddMember);
-        $this->addReference('bmToRemoveTag', $bmToRemoveMember);
+        $this->addReference('bookmark1', $bm1);
+        $this->addReference('bookmark2', $bm2);
+        $this->addReference('bookmarkToDelete', $bmToDelete);
+        $this->addReference('bookmarkToUpdate', $bmToUpdate);
+        $this->addReference('bookmarkToAddTag', $bmToAddMember);
+        $this->addReference('bookmarkToRemoveTag', $bmToRemoveMember);
     }
 }

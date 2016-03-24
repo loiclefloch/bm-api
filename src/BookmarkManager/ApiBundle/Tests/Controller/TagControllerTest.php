@@ -17,7 +17,7 @@ class TagControllerTest extends AbstractWebTestCase
 
         $this->setUpFixtures(
             [
-                'TagManager\ApiBundle\Tests\Fixtures\Entity\LoadTagData',
+                'BookmarkManager\ApiBundle\Tests\Fixtures\Entity\LoadTagData',
             ]
         );
     }
