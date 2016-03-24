@@ -3,7 +3,6 @@
 namespace BookmarkManager\ApiBundle\Controller;
 
 use BookmarkManager\ApiBundle\Entity\Tag;
-use BookmarkManager\ApiBundle\Exception\BMErrorResponseException;
 use BookmarkManager\ApiBundle\Form\TagType;
 use BookmarkManager\ApiBundle\Utils\TagUtils;
 use Nelmio\ApiDocBundle\Annotation\ApiDoc;

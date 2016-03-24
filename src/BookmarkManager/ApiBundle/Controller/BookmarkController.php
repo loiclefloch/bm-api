@@ -5,7 +5,9 @@ namespace BookmarkManager\ApiBundle\Controller;
 use BookmarkManager\ApiBundle\Crawler\CrawlerNotFoundException;
 use BookmarkManager\ApiBundle\Crawler\CrawlerRetrieveDataException;
 use BookmarkManager\ApiBundle\Crawler\WebsiteCrawler;
+use BookmarkManager\ApiBundle\Exception\BmErrorResponseException;
 use BookmarkManager\ApiBundle\Utils\BookmarkUtils;
+use BookmarkManager\ApiBundle\Utils\TagUtils;
 use Exception;
 use FOS\RestBundle\Controller\Annotations\View;
 use FOS\RestBundle\Request\ParamFetcher;
@@ -345,76 +347,6 @@ class BookmarkController extends BaseController
 
 
     /**
-     * Update an existing Bookmark. Creates the new tag and add it to the bookmark.
-     *
-     * @ApiDoc(
-     *  description="Create and add a tag to a bookmark",
-     *  requirements={
-     *      {
-     *          "name"="bookmarkId",
-     *          "dataType"="integer",
-     *          "requirement"="[\d]+",
-     *          "description"="Bookmark id"
-     *      },
-     *     {
-     *          "name"="$tagId",
-     *          "dataType"="integer",
-     *          "requirement"="[\d]+",
-     *          "description"="Tag id"
-     *      }
-     *  },
-     *  statusCodes={
-     *      200="Returned when successful.",
-     *      404="Returned when the bookmark is not found.",
-     *      400="Returned when the parameter is invalid."
-     *  }
-     * )
-     *
-     * @ApiErrors({
-     *      { 101, "The bookmark id must be numeric" }
-     * })
-     *
-     * @param Request $request
-     * @param $bookmarkId
-     * @return Response
-     */
-    public function postBookmarkTagAction(Request $request, $bookmarkId)
-    {
-
-        if (!is_numeric($bookmarkId)) {
-            return $this->errorResponse(101, "The id must be numeric", Response::HTTP_BAD_REQUEST);
-        }
-
-        $bookmarkEntity = $this->getRepository('Bookmark')->findOneBy(
-            [
-                'id' => $bookmarkId,
-                'owner' => $this->getUser(),
-            ]
-        );
-
-        return $this->errorResponse(null, null, Response::HTTP_NOT_IMPLEMENTED);
-
-        // TODO: Create the tag if not exists for this user.
-//        $tagEntity = $tagService->createTag($request);
-
-//        if (!$bookmarkEntity || !$tagEntity) {
-//            return $this->notFoundResponse();
-//        }
-//
-//        if (!$bookmarkEntity->haveTag($tagEntity)) {
-//            $bookmarkEntity->addTag($tagEntity);
-//            $this->persistEntity($bookmarkEntity);
-//        }
-//
-//        return $this->successResponse($bookmarkEntity);
-    }
-
-    // ---------------------------------------------------------------------------------------------------------------
-    //    /bookmarks/{id}/tags/{id}
-    // ---------------------------------------------------------------------------------------------------------------
-
-
-    /**
      * Update an existing Bookmark by adding a tag.
      * @ApiDoc(
      *  description="Add tag to bookmark",
@@ -424,13 +356,19 @@ class BookmarkController extends BaseController
      *          "dataType"="integer",
      *          "requirement"="[\d]+",
      *          "description"="Bookmark id"
-     *      },
-     *     {
-     *          "name"="$tagId",
-     *          "dataType"="integer",
-     *          "requirement"="[\d]+",
-     *          "description"="Tag id"
      *      }
+     *  },
+     *  parameters={
+     *     {
+     *          "name"="tag",
+     *          "dataType"="Tag|integer",
+     *          "required"=false
+     *     },
+     *     {
+     *          "name"="tags",
+     *          "dataType"="Array: Tag|integer",
+     *          "required"=false
+     *     }
      *  },
      *  statusCodes={
      *      201="Returned when successfully created.",
@@ -441,24 +379,22 @@ class BookmarkController extends BaseController
      *
      * @ApiErrors({
      *      { 101, "The bookmark id must be numeric" },
-     *      { 102, "The tag id must be numeric" }
+     *      { 102, "The tag id must be numeric" },
+     *      { 103, "You must specify a 'tag' or 'tags' field" },
+     *      { 104, "None tag id found" }
      * })
      * @param Request $request
      * @param $bookmarkId
-     * @param $tagId
      * @return Response
      */
-    public function postBookmarkTagsAction(Request $request, $bookmarkId, $tagId)
+    public function postBookmarkTagsAction(Request $request, $bookmarkId)
     {
 
         if (!is_numeric($bookmarkId)) {
             return $this->errorResponse(101, "The id must be numeric", Response::HTTP_BAD_REQUEST);
         }
 
-        if (!is_numeric($tagId)) {
-            return $this->errorResponse(102, "The id must be numeric", Response::HTTP_BAD_REQUEST);
-        }
-
+        // -- get bookmark
         $bookmarkEntity = $this->getRepository('Bookmark')->findOneBy(
             [
                 'id' => $bookmarkId,
@@ -466,21 +402,51 @@ class BookmarkController extends BaseController
             ]
         );
 
-        $tagEntity = $this->getRepository('Tag')->findOneBy(
-            [
-                'id' => $tagId,
-                'owner' => $this->getUser(),
-            ]
-        );
-
-        if (!$bookmarkEntity || !$tagEntity) {
+        if (!$bookmarkEntity) {
             return $this->notFoundResponse();
         }
 
-        if (!$bookmarkEntity->haveTag($tagEntity)) {
-            $bookmarkEntity->addTag($tagEntity);
-            $this->persistEntity($bookmarkEntity);
+        // -- Format tags data
+        $data = $request->request->all();
+        $tags = [];
+
+        if (!empty($data['tags'])) {
+            $tags = $data['tags'];
+        } elseif (!empty($data['tag'])) {
+            $tags = [$data['tag']];
+        } else {
+            return $this->errorResponse(
+                103,
+                'You must specify a "tag" or "tags" field',
+                Response::HTTP_BAD_REQUEST
+            );
+
         }
+
+        foreach ($tags as $tag) {
+
+            if (is_numeric($tag)) {
+                $tagId = $tag;
+            } elseif (isset($tag['id'])) {
+                $tagId = $tag['id'];
+            } else {
+                return $this->errorResponse(104, 'None tag id found', Response::HTTP_BAD_REQUEST);
+            }
+
+            $tagEntity = $this->getRepository('Tag')->findOneBy(
+                [
+                    'id' => $tagId,
+                    'owner' => $this->getUser(),
+                ]
+            );
+
+            if (!$tagEntity) {
+                $tagEntity = TagUtils::createTag($this, $tag);
+            }
+
+            $bookmarkEntity->addTag($tagEntity);
+        }
+        $this->persistEntity($bookmarkEntity);
 
         return $this->successResponse($bookmarkEntity, Response::HTTP_CREATED, ['alone']);
     }
