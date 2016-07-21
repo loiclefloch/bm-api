@@ -5,6 +5,7 @@ namespace BookmarkManager\ApiBundle\Crawler;
 use BookmarkManager\ApiBundle\Crawler\Plugin\GithubCrawlerPlugin;
 use BookmarkManager\ApiBundle\Crawler\Plugin\ImageCrawlerPlugin;
 use BookmarkManager\ApiBundle\Crawler\Plugin\SlideshareCrawlerPlugin;
+use BookmarkManager\ApiBundle\Crawler\Plugin\YouTubeCrawlerPlugin;
 use BookmarkManager\ApiBundle\Entity\Bookmark;
 use BookmarkManager\ApiBundle\Entity\BookmarkType;
 use BookmarkManager\ApiBundle\Entity\User;
@@ -18,7 +19,7 @@ use BookmarkManager\ApiBundle\Crawler\Readability\Readability;
 class WebsiteCrawler
 {
     /**
-     * Number of occurrences find for a tag name on the bookmark text content to set the tag.
+     * Number of occurrences find for a tag name on the bookmark text content to propose to set the tag.
      * This value is completely arbitrary.
      * TODO: Run tests to find an appreciable value.
      */
@@ -34,7 +35,7 @@ class WebsiteCrawler
         $bookmark->setUrl($this->cleanUrl($bookmark->getUrl()));
 
         $html = $this->get_data($bookmark->getUrl());
-        
+
         return $this->crawlWebsiteWithHtml($bookmark, $html, $user);
     }
 
@@ -179,6 +180,7 @@ class WebsiteCrawler
             new ImageCrawlerPlugin(),
             new GithubCrawlerPlugin(),
             new SlideshareCrawlerPlugin(),
+            new YouTubeCrawlerPlugin()
         ];
 
         foreach ($crawlerPlugins as $plugin) {
@@ -620,23 +622,43 @@ class WebsiteCrawler
 
         return $content;
     }
-
+    
     public function findTagsOnText(Array $tags, $text)
     {
-
-        $found = [];
+        // Contains the tag and the number of occurrences
+        $tagsInfo = [];
 
         // -- remove html. Keep only the text.
         $crawler = new Crawler($text);
         $text = $crawler->text();
 
         foreach ($tags as $tag) {
-
             $nbOccurrences = $this->findNumberOfOccurrencesOfStringOnText($tag->getName(), $text);
 
             if ($nbOccurrences >= WebsiteCrawler::NB_OCCURRENCES_TO_SET_TAG) {
-                $found[] = $tag;
+                $tagsInfo[] = [
+                    'tag' => $tag,
+                    'nbOccurrences' => $nbOccurrences,
+                ];
             }
+
+        }
+
+        $found = [];
+
+        // Sort the tags found by number of occurrences
+        usort(
+            $tagsInfo,
+            function ($a, $b) {
+                return $b['nbOccurrences'] - $a['nbOccurrences'];
+            }
+        );
+
+        // Only took the 3 most relevant
+        $tagsInfo = array_slice($tagsInfo, 0, 3);
+
+        foreach ($tagsInfo as $tagInfo) {
+            $found[] = $tagInfo['tag'];
         }
 
         return $found;
@@ -666,7 +688,8 @@ class WebsiteCrawler
         return false;
     }
 
-    public function getMetaPropertiesFromHtml($html) {
+    public function getMetaPropertiesFromHtml($html)
+    {
         $crawler = new Crawler($html);
 
         // -- Meta property

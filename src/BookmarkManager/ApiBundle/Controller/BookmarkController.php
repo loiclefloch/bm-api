@@ -5,6 +5,7 @@ namespace BookmarkManager\ApiBundle\Controller;
 use BookmarkManager\ApiBundle\Crawler\CrawlerNotFoundException;
 use BookmarkManager\ApiBundle\Crawler\CrawlerRetrieveDataException;
 use BookmarkManager\ApiBundle\Crawler\WebsiteCrawler;
+use BookmarkManager\ApiBundle\Exception\BmAlreadyExistsException;
 use BookmarkManager\ApiBundle\Exception\BmErrorResponseException;
 use BookmarkManager\ApiBundle\Utils\BookmarkUtils;
 use BookmarkManager\ApiBundle\Utils\TagUtils;
@@ -88,26 +89,26 @@ class BookmarkController extends BaseController
 
         $paging['offset'] = (($paging['page'] - 1) * $paging['limit']);
 
-        $query = $this->getRepository('Bookmark')->createQueryBuilder('p');
+        $builder = $this->getRepository('Bookmark')->createQueryBuilder('p');
 
         // -- Select only the user's bookmarks
-        $query
+        $builder
             ->leftJoin('p.owner', 'u')
             ->andWhere('u.id = :owner')
             ->setParameter('owner', $this->getUser()->getId());
 
         // -- Count total number of result.
-        $countQuery = clone($query);
+        $countQuery = clone($builder);
         $countQuery = $countQuery->select('COUNT(p)')->getQuery();
         $paging['total'] = intval($countQuery->getSingleScalarResult());
 
         // -- Set limit to the query
-        $query = $query->setFirstResult($paging['offset'])
+        $builder = $builder->setFirstResult($paging['offset'])
             ->setMaxResults($paging['limit'])
             ->orderBy('p.createdAt', 'DESC')
             ->getQuery();
 
-        $data = $query->getResult();
+        $data = $builder->getResult();
 
         // -- Set paging
         $paging['last_page'] = intval(ceil($paging['total'] / $paging['limit']));
@@ -164,10 +165,13 @@ class BookmarkController extends BaseController
             $this->getLogger()->info('[IMPORT] Impossible to retrieve the website content for '.$data['url']);
 
             return $this->errorResponse(103, 'Impossible to retrieve the website content.', Response::HTTP_BAD_REQUEST);
-        } catch (Exception $e) {
+        } catch (BmAlreadyExistsException $e) {
+            return $this->errorResponse($e->getErrorCode(), $e->getMessage(), $e->getHttpCode());
+        }
+        catch (Exception $e) {
             $this->getLogger()->info('[IMPORT] Unknown error  for '.$data['url']);
 
-            return $this->errorResponse(104, 'Unknown error', Response::HTTP_BAD_REQUEST);
+            return $this->errorResponse(104, 'Unknown error ' . $e, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
 
         return $this->successResponse($bookmarkEntity, Response::HTTP_CREATED);
@@ -347,9 +351,10 @@ class BookmarkController extends BaseController
 
 
     /**
-     * Update an existing Bookmark by adding a tag.
+     * Update an existing Bookmark by adding one or multiple tag.
+     * 
      * @ApiDoc(
-     *  description="Add tag to bookmark",
+     *  description="Add tag(s) to bookmark",
      *  requirements={
      *      {
      *          "name"="bookmarkId",
@@ -408,7 +413,6 @@ class BookmarkController extends BaseController
 
         // -- Format tags data
         $data = $request->request->all();
-        $tags = [];
 
         if (!empty($data['tags'])) {
             $tags = $data['tags'];
@@ -452,25 +456,31 @@ class BookmarkController extends BaseController
     }
 
     /**
-     * Update an existing Bookmark by removing a tag.
+     * Update an existing Bookmark by removing one or multiple tag.
      * @ApiDoc(
-     *  description="Remove tag from bookmark",
+     *  description="Remove tag(s) from bookmark",
      *  requirements={
      *      {
      *          "name"="bookmarkId",
      *          "dataType"="integer",
      *          "requirement"="[\d]+",
      *          "description"="Bookmark id"
-     *      },
-     *     {
-     *          "name"="$tagId",
-     *          "dataType"="integer",
-     *          "requirement"="[\d]+",
-     *          "description"="Tag id"
      *      }
      *  },
+     *  parameters={
+     *     {
+     *          "name"="tag",
+     *          "dataType"="Tag|integer",
+     *          "required"=false
+     *     },
+     *     {
+     *          "name"="tags",
+     *          "dataType"="Array: Tag|integer",
+     *          "required"=false
+     *     }
+     *  },
      *  statusCodes={
-     *      200="Returned when successful.",
+     *      201="Returned when successfully created.",
      *      404="Returned when the bookmark is not found.",
      *      400="Returned when the parameter is invalid."
      *  }
@@ -478,24 +488,22 @@ class BookmarkController extends BaseController
      *
      * @ApiErrors({
      *      { 101, "The bookmark id must be numeric" },
-     *      { 102, "The tag id must be numeric" }
+     *      { 102, "The tag id must be numeric" },
+     *      { 103, "You must specify a 'tag' or 'tags' field" },
+     *      { 104, "None tag id found" }
      * })
      * @param Request $request
      * @param $bookmarkId
-     * @param $tagId
      * @return Response
      */
-    public function deleteBookmarkTagAction(Request $request, $bookmarkId, $tagId)
+    public function deleteBookmarkTagsAction(Request $request, $bookmarkId)
     {
 
         if (!is_numeric($bookmarkId)) {
             return $this->errorResponse(101, "The id must be numeric", Response::HTTP_BAD_REQUEST);
         }
 
-        if (!is_numeric($tagId)) {
-            return $this->errorResponse(102, "The id must be numeric", Response::HTTP_BAD_REQUEST);
-        }
-
+        // -- get bookmark
         $bookmarkEntity = $this->getRepository('Bookmark')->findOneBy(
             [
                 'id' => $bookmarkId,
@@ -503,22 +511,50 @@ class BookmarkController extends BaseController
             ]
         );
 
-        $tagEntity = $this->getRepository('Tag')->findOneBy(
-            [
-                'id' => $tagId,
-                'owner' => $this->getUser(),
-            ]
-        );
-
-        if (!$bookmarkEntity || !$tagEntity) {
+        if (!$bookmarkEntity) {
             return $this->notFoundResponse();
         }
 
-        $bookmarkEntity->removeTag($tagEntity);
+        // -- Format tags data
+        $data = $request->request->all();
 
+        if (!empty($data['tags'])) {
+            $tags = $data['tags'];
+        } elseif (!empty($data['tag'])) {
+            $tags = [$data['tag']];
+        } else {
+            return $this->errorResponse(
+                103,
+                'You must specify a "tag" or "tags" field',
+                Response::HTTP_BAD_REQUEST
+            );
+
+        }
+
+        foreach ($tags as $tag) {
+
+            if (is_numeric($tag)) {
+                $tagId = $tag;
+            } elseif (isset($tag['id'])) {
+                $tagId = $tag['id'];
+            } else {
+                return $this->errorResponse(104, 'None tag id found', Response::HTTP_BAD_REQUEST);
+            }
+
+            $tagEntity = $this->getRepository('Tag')->findOneBy(
+                [
+                    'id' => $tagId,
+                    'owner' => $this->getUser(),
+                ]
+            );
+
+            if ($tagEntity) {
+                $bookmarkEntity->removeTag($tagEntity);
+            }
+        }
         $this->persistEntity($bookmarkEntity);
 
-        return $this->successResponse($bookmarkEntity);
+        return $this->successResponse($bookmarkEntity, Response::HTTP_OK, ['alone']);
     }
 
     /**
@@ -529,7 +565,7 @@ class BookmarkController extends BaseController
      * )
      * @param Request $request
      * @return Response
-     * @throws \BookmarkManager\ApiBundle\Exception\BMErrorResponseException
+     * @throws \BookmarkManager\ApiBundle\Exception\BmErrorResponseException
      */
     public function postCrawlerTestAction(Request $request)
     {

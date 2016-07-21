@@ -8,7 +8,7 @@ use BookmarkManager\ApiBundle\Crawler\CrawlerRetrieveDataException;
 use BookmarkManager\ApiBundle\DependencyInjection\BaseController;
 use BookmarkManager\ApiBundle\Entity\Bookmark;
 use BookmarkManager\ApiBundle\Entity\Tag;
-use BookmarkManager\ApiBundle\Exception\BMErrorResponseException;
+use BookmarkManager\ApiBundle\Exception\BmErrorResponseException;
 use BookmarkManager\ApiBundle\Form\BookmarkType;
 use BookmarkManager\ApiBundle\Form\TagType;
 use BookmarkManager\ApiBundle\Crawler\WebsiteCrawler;
@@ -71,7 +71,7 @@ class DataController extends BaseController
             try {
                 $tagEntity = TagUtils::createTag($this, $tagData);
                 $newTags[] = $tagEntity;
-            } catch (BMErrorResponseException $e) {
+            } catch (BmErrorResponseException $e) {
                 // do nothing
                 $this->getLogger()->info('Catch exception '.$e->getMessage());
             }
@@ -95,7 +95,7 @@ class DataController extends BaseController
                 $this->getLogger()->info('[IMPORT] 404 for '.$bookmarkData['url']);
             } catch (CrawlerRetrieveDataException $e) {
                 $this->getLogger()->info('[IMPORT] Impossible to retrieve the website content for '.$bookmarkData['url']);
-            } catch (BMErrorResponseException $e) {
+            } catch (BmErrorResponseException $e) {
                 // do nothing
                 $this->getLogger()->info('[IMPORT] Catch exception for '.$bookmarkData['url'].' - '.$e->getMessage());
             } catch (Exception $e) {

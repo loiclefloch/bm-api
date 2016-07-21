@@ -2,7 +2,7 @@
 
 namespace BookmarkManager\ApiBundle\Controller;
 
-use BookmarkManager\ApiBundle\Exception\BMErrorResponseException;
+use BookmarkManager\ApiBundle\Exception\BmErrorResponseException;
 use FOS\RestBundle\Request\ParamFetcher;
 use FOS\RestBundle\Controller\Annotations as Rest;
 use Nelmio\ApiDocBundle\Annotation\ApiDoc;

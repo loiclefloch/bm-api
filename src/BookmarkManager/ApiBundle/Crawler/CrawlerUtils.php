@@ -26,6 +26,7 @@ class CrawlerUtils
      * @param $url
      * @param $timeout
      * @return mixed
+     * @throws CrawlerNotFoundException
      * @throws CrawlerRetrieveDataException
      */
     public static function getExternalFile($url, $timeout)
@@ -71,7 +72,9 @@ class CrawlerUtils
                 $enc[1] = '';
             }
             // replace charset of url to charset of page
-            $data = str_replace('charset='.$enc[1], 'charset='.$html_charset, $data);
+            if (count($enc) >= 1) {
+                $data = str_replace('charset='.$enc[1], 'charset='.$html_charset, $data);
+            }
 
             return $data;
         } else {

@@ -168,4 +168,58 @@ class UserController extends BaseController
         return $this->successResponse($user, Response::HTTP_CREATED);
     }
 
+    /**
+     * Update an user.
+     *
+     * @ApiDoc(
+     *  description="Create a user",
+     *  parameters={
+     *      {"name"="email",        "dataType"="string",    "required"=true },
+     *      {"name"="password",     "dataType"="string",    "required"=true },
+     *  },
+     *  statusCodes={
+     *      201="Returned when successful.",
+     *      400="Returned when the parameters are invalid."
+     *  }
+     * )
+     *
+     * @ApiErrors({
+     * })
+     *
+     * @param Request $request
+     * @param $userId
+     * @return Response
+     */
+    public function putUserAction(Request $request, $userId)
+    {
+        if (!is_numeric($userId)) {
+            return $this->errorResponse(101, "The id must be numeric", Response::HTTP_BAD_REQUEST);
+        }
+
+        $user = $this->getRepository("User")->find($userId);
+
+        if (!$user) {
+            return $this->notFoundResponse();
+        }
+
+        // see http://stackoverflow.com/questions/9183368/symfony2-user-setpassword-updates-password-as-plain-text-datafixtures-fos
+        $userManager = $this->container->get('fos_user.user_manager');
+
+        // -- email
+        $email = $request->request->get('email');
+        if ($email) {
+            $user->setEmail($email);
+            $user->setUsername($email);
+        }
+
+        // -- password
+        $password = $request->request->get('password');
+        if ($password) {
+            $user->setPlainPassword($password);
+        }
+
+        $userManager->updateUser($user, true);
+
+        return $this->successResponse($user, Response::HTTP_CREATED);
+    }
 }

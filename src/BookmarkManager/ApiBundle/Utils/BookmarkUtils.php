@@ -12,6 +12,7 @@ use BookmarkManager\ApiBundle\Crawler\CrawlerNotFoundException;
 use BookmarkManager\ApiBundle\Crawler\CrawlerRetrieveDataException;
 use BookmarkManager\ApiBundle\Entity\Bookmark;
 use BookmarkManager\ApiBundle\Entity\Tag;
+use BookmarkManager\ApiBundle\Exception\BmAlreadyExistsException;
 use BookmarkManager\ApiBundle\Exception\BmErrorResponseException;
 use BookmarkManager\ApiBundle\Form\BookmarkType;
 use BookmarkManager\ApiBundle\Form\TagType;
@@ -32,8 +33,8 @@ class BookmarkUtils
      * @param $controller
      * @param $data
      * @return Tag
-     * @throws BMAlreadyExistsException
-     * @throws BMErrorResponseException
+     * @throws BmAlreadyExistsException
+     * @throws BmErrorResponseException
      */
     public static function createBookmark($controller, $data)
     {
@@ -66,7 +67,7 @@ class BookmarkUtils
             );
 
             if ($exists) {
-                throw new BMAlreadyExistsException(101, "Bookmark already exists with this url.");
+                throw new BmAlreadyExistsException();
             }
 
             $bookmarkEntity->setUrl($url);
@@ -97,7 +98,7 @@ class BookmarkUtils
                         try {
                             $tag = TagUtils::createTag($controller, $tagData);
                             $bookmarkEntity->addTag($tag);
-                        } catch (BMErrorResponseException $e) {
+                        } catch (BmErrorResponseException $e) {
                             // do nothing
                             $controller->getLogger()->info('Catch exception '.$e->getMessage());
                         }
@@ -111,7 +112,7 @@ class BookmarkUtils
             return $bookmarkEntity;
         }
 
-        throw new BMErrorResponseException(400, ArrayUtils::formErrorsToArray($form), Response::HTTP_BAD_REQUEST);
+        throw new BmErrorResponseException(400, ArrayUtils::formErrorsToArray($form), Response::HTTP_BAD_REQUEST);
     }
 
 

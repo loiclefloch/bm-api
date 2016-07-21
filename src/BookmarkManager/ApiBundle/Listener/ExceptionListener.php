@@ -8,7 +8,7 @@
 
 namespace BookmarkManager\ApiBundle\Listener;
 
-use BookmarkManager\ApiBundle\Exception\BMErrorResponseException;
+use BookmarkManager\ApiBundle\Exception\BmErrorResponseException;
 use Symfony\Component\HttpKernel\Event\GetResponseForExceptionEvent;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -27,8 +27,8 @@ class ExceptionListener
 
         $statusCode = Response::HTTP_INTERNAL_SERVER_ERROR;
 
-        // -- Handle non catch BMErrorResponseException
-        if ($exception instanceof BMErrorResponseException) {
+        // -- Handle non catch BmErrorResponseException
+        if ($exception instanceof BmErrorResponseException) {
 
             $message = [
                 'code' => $exception->getErrorCode(),

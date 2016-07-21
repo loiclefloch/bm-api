@@ -188,7 +188,13 @@ class Bookmark
      *
      * @return float
      */
-    public function getReadingTime() {
+    public function getReadingTime()
+    {
+        if ($this->getType() == BookmarkType::SLIDE) {
+        // count number of slides
+            // TODO: count number of slides to calculate reading time.
+//        $nbSlides = $crawler->filter('img.slide_image').count();
+        }
         return BookmarkUtils::getReadingTime($this->getContent());
     }
 
@@ -416,6 +422,7 @@ class Bookmark
      */
     public function addTag(Tag $tag)
     {
+        // check if tag already exist but has not yet be persisted
         if (!$this->haveTag($tag)) {
             $this->tags[] = $tag;
         }
@@ -426,9 +433,7 @@ class Bookmark
     public function addTags($tagsFound)
     {
         foreach ($tagsFound as $tag) {
-            if (!$this->haveTag($tag)) {
-                $this->tags[] = $tag;
-            }
+            $this->addTag($tag);
         }
 
         return $this;
@@ -438,10 +443,12 @@ class Bookmark
      * Remove tags
      *
      * @param Tag $tag
+     * @return Bookmark
      */
     public function removeTag(Tag $tag)
     {
         $this->tags->removeElement($tag);
+        return $this;
     }
 
     /**

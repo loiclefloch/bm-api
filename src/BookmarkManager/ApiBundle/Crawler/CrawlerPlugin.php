@@ -21,4 +21,12 @@ abstract class CrawlerPlugin
      * @internal param $html
      */
     abstract public function parse(Crawler $crawler, Bookmark $bookmark);
+
+    protected function removeWithIdentifier(Crawler $crawler, $identifier) {
+        return $crawler->filter($identifier)->each(function (Crawler $c) {
+            foreach ($c as $node) {
+                $node->parentNode->removeChild($node);
+            }
+        });
+    }
 }

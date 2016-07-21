@@ -3,7 +3,7 @@
 namespace BookmarkManager\ApiBundle\Utils;
 
 use BookmarkManager\ApiBundle\Entity\Tag;
-use BookmarkManager\ApiBundle\Exception\BMErrorResponseException;
+use BookmarkManager\ApiBundle\Exception\BmErrorResponseException;
 use Symfony\Component\Form\Form;
 use Symfony\Component\HttpFoundation\Request;
 

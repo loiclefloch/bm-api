@@ -9,7 +9,8 @@
 namespace BookmarkManager\ApiBundle\Utils;
 
 use BookmarkManager\ApiBundle\Entity\Tag;
-use BookmarkManager\ApiBundle\Exception\BMErrorResponseException;
+use BookmarkManager\ApiBundle\Exception\BmAlreadyExistsException;
+use BookmarkManager\ApiBundle\Exception\BmErrorResponseException;
 use BookmarkManager\ApiBundle\Form\TagType;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -25,7 +26,7 @@ class TagUtils
      * @param $controller
      * @param $data
      * @return Tag
-     * @throws BMErrorResponseException
+     * @throws BmErrorResponseException
      */
     public static function createTag($controller, $data)
     {
@@ -52,14 +53,14 @@ class TagUtils
             $tagEntity->setOwner($controller->getUser());
 
             if ($exists) {
-                throw new BMAlreadyExistsException(101, "Tag already exists");
+                throw new BmAlreadyExistsException(101, "Tag already exists");
             }
 
             $controller->persistEntity($tagEntity);
             return $tagEntity;
         }
 
-        throw new BMErrorResponseException(400, ArrayUtils::formErrorsToArray($form),  Response::HTTP_BAD_REQUEST);
+        throw new BmErrorResponseException(400, ArrayUtils::formErrorsToArray($form),  Response::HTTP_BAD_REQUEST);
     }
 
 }
