@@ -2,6 +2,7 @@
 
 namespace BookmarkManager\ApiBundle\Entity;
 
+use Symfony\Component\DomCrawler\Crawler;
 use BookmarkManager\ApiBundle\Utils\BookmarkUtils;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\ORM\Mapping as ORM;
@@ -492,7 +493,11 @@ class Bookmark
      */
     public function setContent($content)
     {
-        $this->content = $content;
+        /**
+         * Add the charset for the DomCrawler to use UTF-8 and not the default 'ISO-8859-1'.
+         * @see Crawler#addContent
+         */
+        $this->content = "<!DOCTYPE html><html><head><meta charset='utf-8>' /></head><body>" . $content . "</body></html>";
 
         return $this;
     }

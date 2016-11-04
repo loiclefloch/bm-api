@@ -217,9 +217,6 @@ class WebsiteCrawler
 
         $bookmark->setContent($this->handleAnchors($bookmark->getContent()));
 
-
-        $bookmark->setContent(Encoding::fixUTF8($bookmark->getContent()));
-
         return $bookmark;
     }
 
@@ -544,6 +541,9 @@ class WebsiteCrawler
             }
         }
 
+        // replace // to /
+        $newSrc = str_replace('//', '/', $newSrc);
+
         return $newSrc;
     }
 
@@ -591,6 +591,9 @@ class WebsiteCrawler
                 $newSrc = $url.'/'.$currentSrc;
             }
         }
+
+        // replace // to /
+        $newSrc = str_replace('//', '/', $newSrc);
 
         return $newSrc;
     }

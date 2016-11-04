@@ -22,11 +22,20 @@ abstract class CrawlerPlugin
      */
     abstract public function parse(Crawler $crawler, Bookmark $bookmark);
 
+    /**
+     * Remove the given identifier on the crawler
+     *
+     * @param Crawler $crawler The crawler to use.
+     * @param $identifier String identifier, example: '.btn'
+     * @return Crawler The modified crawler
+     */
     protected function removeWithIdentifier(Crawler $crawler, $identifier) {
-        return $crawler->filter($identifier)->each(function (Crawler $c) {
+        $crawler->filter($identifier)->each(function (Crawler $c) {
             foreach ($c as $node) {
                 $node->parentNode->removeChild($node);
             }
         });
+
+        return $crawler;
     }
 }

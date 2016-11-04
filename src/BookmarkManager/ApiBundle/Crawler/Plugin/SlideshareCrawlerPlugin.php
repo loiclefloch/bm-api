@@ -12,7 +12,7 @@ class SlideshareCrawlerPlugin extends CrawlerPlugin
 
     /**
      * @param $url
-     * @return array
+     * @return bool
      */
     public function matchUrl($url)
     {

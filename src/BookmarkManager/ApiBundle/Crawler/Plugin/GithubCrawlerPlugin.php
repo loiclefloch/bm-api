@@ -12,7 +12,7 @@ class GithubCrawlerPlugin extends CrawlerPlugin
 
     /**
      * @param $url
-     * @return array
+     * @return bool
      */
     public function matchUrl($url)
     {
@@ -29,15 +29,19 @@ class GithubCrawlerPlugin extends CrawlerPlugin
     {
         // Simple markdown file
         if ($crawler->filter('article.entry-content')->count()) {
-            $bookmark->setContent($crawler->filter('article.entry-content')->html());
+            $crawler = $crawler->filter('article.entry-content');
+
+
             /**
              * Note:
              * Github have specific anchor: <href="#a"> link to <h1></h1><a name="user-content-a"> for example
              * This type of anchor is handle on the front web.
              */
 
-            // TODO: remove div .octicon-link
+            // remove div .octicon.octicon-link
+            $crawler = $this->removeWithIdentifier($crawler, '.octicon.octicon-link');
 
+            $bookmark->setContent($crawler->html());
 
             $bookmark->setType(BookmarkType::CODE);
         }
@@ -46,6 +50,10 @@ class GithubCrawlerPlugin extends CrawlerPlugin
             $bookmark->setContent($crawler->filter('div.blob-wrapper')->html());
             $bookmark->setType(BookmarkType::CODE);
         }
+
+        // -- Title
+        // Remove 'GitHub - ' from the title.
+        $bookmark->setTitle(str_replace('GitHub - ', '', $bookmark->getTitle()));
 
         return $bookmark;
     }

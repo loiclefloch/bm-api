@@ -12,7 +12,7 @@ class YouTubeCrawlerPlugin extends CrawlerPlugin
 
     /**
      * @param $url
-     * @return array
+     * @return bool
      */
     public function matchUrl($url)
     {
@@ -35,6 +35,12 @@ class YouTubeCrawlerPlugin extends CrawlerPlugin
             // just keep the description
             $bookmark->setContent($crawler->filter('div#watch-description-text')->html());
         }
+
+        // -- Title
+        // Remove ' - YouTube' from the title.
+        $bookmark->setTitle(str_replace(' - YouTube', '', $bookmark->getTitle()));
+
+
         return $bookmark;
     }
 }
