@@ -4,6 +4,7 @@ namespace BookmarkManager\ApiBundle\Crawler;
 
 use BookmarkManager\ApiBundle\Crawler\Plugin\GithubCrawlerPlugin;
 use BookmarkManager\ApiBundle\Crawler\Plugin\ImageCrawlerPlugin;
+use BookmarkManager\ApiBundle\Crawler\Plugin\MediumCrawlerPlugin;
 use BookmarkManager\ApiBundle\Crawler\Plugin\SlideshareCrawlerPlugin;
 use BookmarkManager\ApiBundle\Crawler\Plugin\YouTubeCrawlerPlugin;
 use BookmarkManager\ApiBundle\Entity\Bookmark;
@@ -181,7 +182,8 @@ class WebsiteCrawler
             new ImageCrawlerPlugin(),
             new GithubCrawlerPlugin(),
             new SlideshareCrawlerPlugin(),
-            new YouTubeCrawlerPlugin()
+            new YouTubeCrawlerPlugin(),
+            new MediumCrawlerPlugin()
         ];
 
         foreach ($crawlerPlugins as $plugin) {

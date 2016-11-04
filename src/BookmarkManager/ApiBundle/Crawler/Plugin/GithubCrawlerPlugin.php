@@ -31,7 +31,6 @@ class GithubCrawlerPlugin extends CrawlerPlugin
         if ($crawler->filter('article.entry-content')->count()) {
             $crawler = $crawler->filter('article.entry-content');
 
-
             /**
              * Note:
              * Github have specific anchor: <href="#a"> link to <h1></h1><a name="user-content-a"> for example
