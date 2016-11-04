@@ -9,6 +9,7 @@ use BookmarkManager\ApiBundle\Crawler\Plugin\YouTubeCrawlerPlugin;
 use BookmarkManager\ApiBundle\Entity\Bookmark;
 use BookmarkManager\ApiBundle\Entity\BookmarkType;
 use BookmarkManager\ApiBundle\Entity\User;
+use BookmarkManager\ApiBundle\Utils\BookmarkUtils;
 use BookmarkManager\ApiBundle\Utils\StringUtils;
 use Exception;
 use Symfony\Component\DomCrawler\Crawler;
@@ -216,6 +217,11 @@ class WebsiteCrawler
         // TODO: remove scripts and css from content
 
         $bookmark->setContent($this->handleAnchors($bookmark->getContent()));
+
+        // Set readingTime if the crawler have not.
+        if ($bookmark->getReadingTime() === $bookmark::DEFAULT_READING_TIME) {
+            $bookmark->setReadingTime(BookmarkUtils::getReadingTime($bookmark));
+        }
 
         return $bookmark;
     }

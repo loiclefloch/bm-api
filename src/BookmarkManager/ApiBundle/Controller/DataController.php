@@ -9,7 +9,6 @@ use BookmarkManager\ApiBundle\DependencyInjection\BaseController;
 use BookmarkManager\ApiBundle\Entity\Bookmark;
 use BookmarkManager\ApiBundle\Entity\Tag;
 use BookmarkManager\ApiBundle\Exception\BmErrorResponseException;
-use BookmarkManager\ApiBundle\Form\BookmarkType;
 use BookmarkManager\ApiBundle\Form\TagType;
 use BookmarkManager\ApiBundle\Crawler\WebsiteCrawler;
 use BookmarkManager\ApiBundle\Utils\BookmarkUtils;

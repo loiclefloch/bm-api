@@ -22,7 +22,7 @@ use JMS\Serializer\Annotation\VirtualProperty;
  * Class BookmarkType
  * @package BookmarkManager\ApiBundle\Entity
  */
-class BookmarkType
+abstract class BookmarkType
 {
     const WEBSITE = 0; // default
     const ARTICLE = 1;
@@ -44,6 +44,18 @@ class BookmarkType
  */
 class Bookmark
 {
+
+    /**
+     * The default readingTime value. Help us to know if the readingTime have been calculated or not.
+     */
+    const DEFAULT_READING_TIME = -1;
+
+    /**
+     * Average readers only reach around 200 wpm (words per minute) with a typical comprehension of 60%.
+     *
+     * @see http://www.readingsoft.com/
+     */
+    const AVERAGE_WORDS_PER_MINUTES = 200;
 
     /**
      * @var integer
@@ -181,23 +193,18 @@ class Bookmark
      */
     private $previewPicture;
 
+
     /**
-     * @VirtualProperty
-     * @Type("string")
-     * @SerializedName("reading_time")
-     * @Groups({"list","alone"})
+     * @var number
      *
-     * @return float
+     * @ORM\Column(name="reading_time", type="smallint", nullable=false)
+     *
+     * @see #getReadingTime
+     *
+     * @Expose
+     * @Groups({"list", "alone"})
      */
-    public function getReadingTime()
-    {
-        if ($this->getType() == BookmarkType::SLIDE) {
-        // count number of slides
-            // TODO: count number of slides to calculate reading time.
-//        $nbSlides = $crawler->filter('img.slide_image').count();
-        }
-        return BookmarkUtils::getReadingTime($this->getContent());
-    }
+    private $readingTime = Bookmark::DEFAULT_READING_TIME;
 
     // ----------------------------------------------------------------------------------------------------------------
     // LIFECYCLE
@@ -226,6 +233,7 @@ class Bookmark
             $this->setCreatedAt($now);
         }
     }
+
 
     // ----------------------------------------------------------------------------------------------------------------
     // TOOLS
@@ -562,6 +570,22 @@ class Bookmark
     public function setPreviewPicture($previewPicture)
     {
         $this->previewPicture = $previewPicture;
+    }
+
+    /**
+     * @return float
+     */
+    public function getReadingTime()
+    {
+        return $this->readingTime;
+    }
+
+    /**
+     * @param number $readingTime
+     */
+    public function setReadingTime($readingTime)
+    {
+        $this->readingTime = $readingTime;
     }
 
 }

@@ -18,3 +18,9 @@ search:
 data:
     type:           rest
     resource:       BookmarkManager\ApiBundle\Controller\DataController
+
+
+
+db_update_scripts:
+    type:           rest
+    resource:       BookmarkManager\ApiBundle\Controller\DbUpdateScriptsController

@@ -18,7 +18,7 @@ use Nelmio\ApiDocBundle\Annotation\ApiDoc;
 use Symfony\Component\HttpFoundation\Request;
 use BookmarkManager\ApiBundle\DependencyInjection\BaseController;
 use BookmarkManager\ApiBundle\Entity\Bookmark;
-use BookmarkManager\ApiBundle\Form\BookmarkType;
+use BookmarkManager\ApiBundle\Form\BookmarkFormType;
 use BookmarkManager\ApiBundle\Annotation\ApiErrors;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\DomCrawler\Crawler;
@@ -273,7 +273,7 @@ class BookmarkController extends BaseController
         }
 
         $editForm = $this->createForm(
-            new BookmarkType(),
+            new BookmarkFormType(),
             $bookmarkEntity,
             [
                 'ignoreRequired' => true,
@@ -582,9 +582,10 @@ class BookmarkController extends BaseController
 
             return $this->errorResponse(103, 'Impossible to retrieve the website content.', Response::HTTP_BAD_REQUEST);
         } catch (Exception $e) {
+//            var_dump($e->getTrace());
             $this->getLogger()->info('[IMPORT] Unknown error  for '.$data['url']);
 
-            return $this->errorResponse(104, 'Unknown error', Response::HTTP_BAD_REQUEST);
+            return $this->errorResponse(104, 'Unknown error' . $e->getMessage(), Response::HTTP_BAD_REQUEST);
         }
 
         return $this->successResponse($bookmarkEntity, Response::HTTP_OK, ['alone']);

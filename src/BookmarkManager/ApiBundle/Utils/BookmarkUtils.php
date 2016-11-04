@@ -11,13 +11,14 @@ namespace BookmarkManager\ApiBundle\Utils;
 use BookmarkManager\ApiBundle\Crawler\CrawlerNotFoundException;
 use BookmarkManager\ApiBundle\Crawler\CrawlerRetrieveDataException;
 use BookmarkManager\ApiBundle\Entity\Bookmark;
+use BookmarkManager\ApiBundle\Entity\BookmarkType;
 use BookmarkManager\ApiBundle\Entity\Tag;
 use BookmarkManager\ApiBundle\Exception\BmAlreadyExistsException;
 use BookmarkManager\ApiBundle\Exception\BmErrorResponseException;
-use BookmarkManager\ApiBundle\Form\BookmarkType;
-use BookmarkManager\ApiBundle\Form\TagType;
 use BookmarkManager\ApiBundle\Crawler\WebsiteCrawler;
+use BookmarkManager\ApiBundle\Form\BookmarkFormType;
 use Symfony\Component\Config\Definition\Exception\Exception;
+use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 
 class BookmarkUtils
@@ -41,7 +42,7 @@ class BookmarkUtils
         $bookmarkEntity = new Bookmark();
 
         $form = $controller->createForm(
-            new BookmarkType(),
+            new BookmarkFormType(),
             $bookmarkEntity,
             ['method' => 'POST']
         );
@@ -121,7 +122,7 @@ class BookmarkUtils
         $bookmarkEntity = new Bookmark();
 
         $form = $controller->createForm(
-            new BookmarkType(),
+            new BookmarkFormType(),
             $bookmarkEntity,
             ['method' => 'POST']
         );
@@ -168,22 +169,43 @@ class BookmarkUtils
      * For a given text, we calculate reading time for an article
      * based on 200 words per minute.
      *
-     * @param $text
-     *
+     * @param $bookmark
      * @return float
+     * @internal param $text
+     *
      */
-    public static function getReadingTime($text)
+    public static function getReadingTime(Bookmark $bookmark)
     {
-        if (!strlen($text)) {
-            return 1;
-        }
-        $words = str_word_count(strip_tags($text));
-        $min = floor($words / 200);
-
-        if ($min == 0) {
+        $html = $bookmark->getContent();
+        if (!strlen($html)) {
             return 1;
         }
 
-        return $min;
+
+        if ($bookmark->getType() === BookmarkType::SLIDE) {
+            // count number of slides
+            $crawler = new Crawler($html);
+            $nbSlides = count($crawler->filter('img.slide_image'));
+
+            // For now: 1 minute per slide
+            return $nbSlides * 2;
+        } else {
+            // count words (do not take care of html tag).
+            $words = str_word_count(strip_tags($html));
+
+
+            $min = floor($words / Bookmark::AVERAGE_WORDS_PER_MINUTES);
+
+            if ($min == 0) {
+                return 1;
+            }
+
+            // TODO: Handle slide type reading type
+
+
+            // TODO: Handle video ? -> Perhaps move the reading time to the crawler and save it in db.
+
+            return $min;
+        }
     }
 }
