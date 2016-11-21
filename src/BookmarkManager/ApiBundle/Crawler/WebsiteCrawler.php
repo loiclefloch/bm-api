@@ -113,7 +113,7 @@ class WebsiteCrawler
             $websiteInfo['keywords'] = trim($this->array_get_key('Keywords', $metaNames));
             $websiteInfo['description'] = trim($this->array_get_key('description', $metaProperties));
 
-            $ogData = $this->handleOg($html);
+            $ogData = $this->handleOg($html, $bookmark);
 
             // -- Select the best description
             if ($websiteInfo['description'] === null or strlen($websiteInfo['description']) === 0) {
@@ -218,7 +218,11 @@ class WebsiteCrawler
 
         // TODO: remove scripts and css from content
 
+        // TODO: remove inline styles
+
         $bookmark->setContent($this->handleAnchors($bookmark->getContent()));
+
+//        $bookmark->setRead(false);
 
         // Set readingTime if the crawler have not.
         if ($bookmark->getReadingTime() === $bookmark::DEFAULT_READING_TIME) {
@@ -230,9 +234,10 @@ class WebsiteCrawler
 
     /**
      * @param $html
+     * @param Bookmark $bookmark
      * @return OgData
      */
-    public function handleOg($html)
+    public function handleOg($html, Bookmark $bookmark)
     {
         $metaProperties = $this->getMetaPropertiesFromHtml($html);
 
@@ -242,7 +247,11 @@ class WebsiteCrawler
 
         // -- Handle basic og information See http://ogp.me/
         $websiteInfo->setTitle($this->array_get_key('og:title', $metaProperties));
-        $websiteInfo->setImage($this->array_get_key('og:image', $metaProperties));
+        $ogImage = $this->array_get_key('og:image', $metaProperties);
+
+        if (strlen($ogImage) > 0) {
+            $websiteInfo->setImage($this->getRealLink($ogImage, $bookmark->getUrl()));
+        }
 
         $websiteInfo->setDescription($this->array_get_key('og:description', $metaProperties));
 

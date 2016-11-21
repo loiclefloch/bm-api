@@ -206,6 +206,16 @@ class Bookmark
      */
     private $readingTime = Bookmark::DEFAULT_READING_TIME;
 
+    /**
+     * @var boolean
+     *
+     * @ORM\Column(name="is_read", type="boolean", options={"default": false})
+     *
+     * @Expose
+     * @Groups({"list", "alone"})
+     */
+    private $read = false;
+
     // ----------------------------------------------------------------------------------------------------------------
     // LIFECYCLE
     // ----------------------------------------------------------------------------------------------------------------
@@ -587,5 +597,22 @@ class Bookmark
     {
         $this->readingTime = $readingTime;
     }
+
+    /**
+     * @return boolean
+     */
+    public function isRead()
+    {
+        return $this->read;
+    }
+
+    /**
+     * @param boolean $read
+     */
+    public function setRead($read)
+    {
+        $this->read = $read;
+    }
+
 
 }

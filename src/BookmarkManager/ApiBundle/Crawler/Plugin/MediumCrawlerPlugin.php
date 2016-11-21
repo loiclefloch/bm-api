@@ -33,7 +33,7 @@ class MediumCrawlerPlugin extends CrawlerPlugin
             $bookmark->setContent($crawler->html());
         }
 
-        // -- Title
+        // -- Title˙
         // Remove ' – Medium' from the title. Warning: '–' is not a '-'.
         $bookmark->setTitle(str_replace(' – Medium', '', $bookmark->getTitle()));
 
