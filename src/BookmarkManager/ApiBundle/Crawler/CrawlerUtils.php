@@ -39,7 +39,10 @@ class CrawlerUtils
             $curl = curl_init();
             curl_setopt($curl, CURLOPT_URL, $url);
             curl_setopt($curl, CURLOPT_TIMEOUT, $timeout);
-//    		curl_setopt($curl, CURLOPT_FOLLOWLOCATION, true);
+
+            // handle 302
+    		curl_setopt($curl, CURLOPT_FOLLOWLOCATION, true);
+
             curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($curl, CURLOPT_HEADER, false);
             // FeedBurner requires a proper USER-AGENT...

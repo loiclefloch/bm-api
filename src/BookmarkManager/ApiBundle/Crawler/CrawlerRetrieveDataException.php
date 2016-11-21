@@ -27,7 +27,7 @@ class CrawlerRetrieveDataException extends Exception
 
     // custom string representation of object
     public function __toString() {
-        return __CLASS__ . "Impossible to retrieve the website content\n";
+        return __CLASS__ . "Impossible to retrieve the website content " . $this->code;
     }
 
 }
