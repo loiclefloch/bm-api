@@ -44,6 +44,7 @@ abstract class BookmarkType
  */
 class Bookmark
 {
+    const REPOSITORY_NAME = 'Bookmark';
 
     /**
      * The default readingTime value. Help us to know if the readingTime have been calculated or not.

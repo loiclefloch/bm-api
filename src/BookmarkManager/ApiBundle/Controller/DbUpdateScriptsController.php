@@ -45,7 +45,7 @@ class DbUpdateScriptsController extends BaseController
      */
     public function putReadingTimeAction()
     {
-        $bookmarks = $this->getRepository('Bookmark')->findAll();
+        $bookmarks = $this->getRepository(Bookmark::REPOSITORY_NAME)->findAll();
 
         foreach ($bookmarks as $bookmark) {
             $bookmark->setReadingTime(BookmarkUtils::getReadingTime($bookmark));

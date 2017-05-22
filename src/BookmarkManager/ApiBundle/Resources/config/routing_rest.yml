@@ -19,7 +19,9 @@ data:
     type:           rest
     resource:       BookmarkManager\ApiBundle\Controller\DataController
 
-
+circle:
+    type:           rest
+    resource:       BookmarkManager\ApiBundle\Controller\CircleController
 
 db_update_scripts:
     type:           rest

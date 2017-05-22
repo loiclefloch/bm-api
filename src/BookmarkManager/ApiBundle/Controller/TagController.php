@@ -111,7 +111,7 @@ class TagController extends BaseController
 
         // -- Get bookmarks
 
-        $repository = $this->getRepository('Bookmark');
+        $repository = $this->getRepository(Bookmark::REPOSITORY_NAME);
         $query = $repository->createQueryBuilder('u')
             ->innerJoin('u.tags', 'g')
             ->where('g.id = :tag_id')

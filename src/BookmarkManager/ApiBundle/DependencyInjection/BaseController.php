@@ -157,6 +157,11 @@ class BaseController extends FOSRestController
         return $this->errorResponse(403, "Access denied", Response::HTTP_FORBIDDEN);
     }
 
+    protected function notImplementedResponse()
+    {
+        return $this->errorResponse(501, "Not implemented", Response::HTTP_NOT_IMPLEMENTED);
+    }
+
     // ---------------------------------------------------------------------------------------------------------------
 
     /**
@@ -292,4 +297,8 @@ class BaseController extends FOSRestController
 
         return $errors;
     }
+
+    // ---------------------------------------------------------------------------------------------------------------
+
+
 }

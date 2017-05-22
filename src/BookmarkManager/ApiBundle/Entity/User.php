@@ -9,6 +9,7 @@ use JMS\Serializer\Annotation\ExclusionPolicy;
 use JMS\Serializer\Annotation\Expose;
 use JMS\Serializer\Annotation\Accessor;
 
+use JMS\Serializer\Annotation\Groups;
 use Symfony\Component\Config\Definition\Exception\Exception;
 use Symfony\Component\Validator\ConstraintViolation;
 
@@ -30,11 +31,15 @@ use BookmarkManager\ApiBundle\Entity\Tag;
  */
 class User extends BaseUser
 {
+    const REPOSITORY_NAME = 'User';
+
     /**
      * @ORM\Id
      * @Expose
      * @ORM\Column(type="integer")
      * @ORM\GeneratedValue(strategy="AUTO")
+     *
+     * @Groups(Circle::GROUP_MULTIPLE_CIRCLES)
      */
     protected $id;
 
@@ -56,6 +61,8 @@ class User extends BaseUser
      * @var string avatar
      * @Expose
      * @ORM\Column(name="avatar", type="string", length=255, nullable=true)
+     *
+     * @Groups(Circle::GROUP_MULTIPLE_CIRCLES)
      */
     private $avatar;
 
@@ -63,6 +70,8 @@ class User extends BaseUser
      * @var datetime lastActivity
      * @Expose
      * @ORM\Column(name="last_activity", type="datetime", nullable=true)
+     *
+     * @Groups(Circle::GROUP_MULTIPLE_CIRCLES)
      */
     private $lastActivity;
 
@@ -80,6 +89,26 @@ class User extends BaseUser
      */
     private $tags;
 
+    /**
+     * @var [Circle] circles
+     *
+     * Disable direct Expose due to serialization bug (serialize as object instead of array)
+     * The service to get the user's circles is /circles
+     *
+     * @ORM\ManyToMany(targetEntity="Circle", mappedBy="members")
+     */
+    protected $circles;
+
+    /**
+     * @var [Circle] circles
+     *
+     * Disable direct Expose due to serialization bug (serialize as object instead of array)
+     * The service to get the user's owned circles is /circles
+     *
+     * @ORM\ManyToMany(targetEntity="Circle", mappedBy="admins")
+     */
+    protected $circlesAdmin;
+
     // ----------------------------------------------------------------------------------------------------------------
     // LIFECYCLE
     // ----------------------------------------------------------------------------------------------------------------
@@ -87,6 +116,9 @@ class User extends BaseUser
     public function __construct()
     {
         parent::__construct();
+
+        $this->circles = new \Doctrine\Common\Collections\ArrayCollection();
+        $this->circlesAdmin = new \Doctrine\Common\Collections\ArrayCollection();
     }
 
     /**
@@ -319,10 +351,85 @@ class User extends BaseUser
     /**
      * Get tags
      *
-     * @return \Doctrine\Common\Collections\Collection 
+     * @return \Doctrine\Common\Collections\Collection
      */
     public function getTags()
     {
         return $this->tags;
     }
+
+    /**
+     * Add members
+     *
+     * @param \BookmarkManager\ApiBundle\Entity\Circle $circle
+     * @return Circle
+     */
+    public function addCircle(Circle $circle)
+    {
+        if (!$this->haveCircle($circle)) {
+            $this->circles[] = $circle;
+        }
+
+        return $this;
+    }
+
+
+    public function haveCircle(Circle $circle)
+    {
+        return $this->circles->indexOf($circle) !== false;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getCircles()
+    {
+        return $this->circles;
+    }
+
+    /**
+     * @param mixed $circles
+     */
+    public function setCircles($circles)
+    {
+        $this->circles = $circles;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getCirclesAdmin()
+    {
+        return $this->circlesAdmin;
+    }
+
+    /**
+     * @param mixed $circlesAdmin
+     */
+    public function setCirclesAdmin($circlesAdmin)
+    {
+        $this->circlesAdmin = $circlesAdmin;
+    }
+
+    /**
+     * Add members
+     *
+     * @param \BookmarkManager\ApiBundle\Entity\Circle $circleToAdministrate
+     * @return Circle
+     */
+    public function addCircleToAdmin(Circle $circleToAdministrate)
+    {
+        if (!$this->haveCircleToAdmin($circleToAdministrate)) {
+            $this->circlesAdmin[] = $circleToAdministrate;
+            $this->addCircle($circleToAdministrate);
+        }
+
+        return $this;
+    }
+
+    public function haveCircleToAdmin(Circle $circleToAdministrate)
+    {
+        return $this->circlesAdmin->indexOf($circleToAdministrate) !== false;
+    }
+
 }

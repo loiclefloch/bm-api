@@ -89,7 +89,7 @@ class BookmarkController extends BaseController
 
         $paging['offset'] = (($paging['page'] - 1) * $paging['limit']);
 
-        $builder = $this->getRepository('Bookmark')->createQueryBuilder('p');
+        $builder = $this->getRepository(Bookmark::REPOSITORY_NAME)->createQueryBuilder('p');
 
         // -- Select only the user's bookmarks
         $builder
@@ -211,7 +211,7 @@ class BookmarkController extends BaseController
             return $this->errorResponse(101, "The id must be numeric", Response::HTTP_BAD_REQUEST);
         }
 
-        $bookmarkEntity = $this->getRepository('Bookmark')->findOneBy(
+        $bookmarkEntity = $this->getRepository(Bookmark::REPOSITORY_NAME)->findOneBy(
             [
                 'id' => $bookmarkId,
                 'owner' => $this->getUser(),
@@ -261,7 +261,7 @@ class BookmarkController extends BaseController
             return $this->errorResponse(101, "The id must be numeric", Response::HTTP_BAD_REQUEST);
         }
 
-        $bookmarkEntity = $this->getRepository('Bookmark')->findOneBy(
+        $bookmarkEntity = $this->getRepository(Bookmark::REPOSITORY_NAME)->findOneBy(
             [
                 'id' => $bookmarkId,
                 'owner' => $this->getUser(),
@@ -329,7 +329,7 @@ class BookmarkController extends BaseController
             return $this->errorResponse(101, "The id must be numeric", Response::HTTP_BAD_REQUEST);
         }
 
-        $bookmarkEntity = $this->getRepository('Bookmark')->findOneBy(
+        $bookmarkEntity = $this->getRepository(Bookmark::REPOSITORY_NAME)->findOneBy(
             [
                 'id' => $bookmarkId,
                 'owner' => $this->getUser(),
@@ -400,7 +400,7 @@ class BookmarkController extends BaseController
         }
 
         // -- get bookmark
-        $bookmarkEntity = $this->getRepository('Bookmark')->findOneBy(
+        $bookmarkEntity = $this->getRepository(Bookmark::REPOSITORY_NAME)->findOneBy(
             [
                 'id' => $bookmarkId,
                 'owner' => $this->getUser(),
@@ -504,7 +504,7 @@ class BookmarkController extends BaseController
         }
 
         // -- get bookmark
-        $bookmarkEntity = $this->getRepository('Bookmark')->findOneBy(
+        $bookmarkEntity = $this->getRepository(Bookmark::REPOSITORY_NAME)->findOneBy(
             [
                 'id' => $bookmarkId,
                 'owner' => $this->getUser(),

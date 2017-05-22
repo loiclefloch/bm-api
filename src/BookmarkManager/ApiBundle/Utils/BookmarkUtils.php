@@ -60,7 +60,7 @@ class BookmarkUtils
             }
 
             // Search if bookmark already exists.
-            $exists = $controller->getRepository('Bookmark')->findOneBy(
+            $exists = $controller->getRepository(Bookmark::REPOSITORY_NAME)->findOneBy(
                 [
                     'owner' => $controller->getUser()->getId(),
                     'url' => $url,
@@ -154,7 +154,7 @@ class BookmarkUtils
         }
 
         // Search if bookmark already exists.
-        $exists = $controller->getRepository('Bookmark')->findOneBy(
+        $exists = $controller->getRepository(Bookmark::REPOSITORY_NAME)->findOneBy(
             [
                 'owner' => $controller->getUser()->getId(),
                 'url' => $url,

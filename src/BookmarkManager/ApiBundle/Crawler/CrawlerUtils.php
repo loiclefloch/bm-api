@@ -37,22 +37,36 @@ class CrawlerUtils
         if (in_array('curl', get_loaded_extensions())) {
             // Fetch feed from URL
             $curl = curl_init();
-            curl_setopt($curl, CURLOPT_URL, $url);
-            curl_setopt($curl, CURLOPT_TIMEOUT, $timeout);
 
-            // handle 302
-    		curl_setopt($curl, CURLOPT_FOLLOWLOCATION, true);
+            $options = array(
+                CURLOPT_URL            => $url,
+                CURLOPT_TIMEOUT        => $timeout,
 
-            curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($curl, CURLOPT_HEADER, false);
-            // FeedBurner requires a proper USER-AGENT...
-            curl_setopt($curl, CURL_HTTP_VERSION_1_1, true);
-            curl_setopt($curl, CURLOPT_ENCODING, "gzip, deflate");
-            curl_setopt($curl, CURLOPT_USERAGENT, $userAgent);
+                // handle 302
+                CURLOPT_FOLLOWLOCATION => true,
+
+                CURLOPT_RETURNTRANSFER => true,
+
+                CURLOPT_HEADER         => false,
+
+                CURLOPT_ENCODING       => "gzip, deflate",
+                CURLOPT_AUTOREFERER    => true,
+                CURLOPT_CONNECTTIMEOUT => 120,
+                CURLOPT_MAXREDIRS      => 10,
+
+                CURL_HTTP_VERSION_1_1 => true,
+
+                CURLOPT_USERAGENT     => $userAgent
+            );
+
+            curl_setopt_array($curl, $options);
+
             $data = curl_exec($curl);
 
             $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
             $httpCodeOK = isset($httpCode) && ($httpCode == 200 || $httpCode == 301);
+
+//            print curl_error($curl);
 
             curl_close($curl);
         }

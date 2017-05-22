@@ -91,7 +91,7 @@ class SearchController extends BaseController
 
         $paging['offset'] = (($paging['page'] - 1) * $paging['limit']);
 
-        $builder = $this->getRepository('Bookmark')->createQueryBuilder('p');
+        $builder = $this->getRepository(Bookmark::REPOSITORY_NAME)->createQueryBuilder('p');
 
         if (isset($params['name']) && $params['name'] != null && !empty($params['name'])) {
             $builder
@@ -203,7 +203,7 @@ class SearchController extends BaseController
         }
 
         // Search if bookmark already exists.
-        $bookmark = $this->getRepository('Bookmark')->findOneBy(
+        $bookmark = $this->getRepository(Bookmark::REPOSITORY_NAME)->findOneBy(
             [
                 'owner' => $this->getUser()->getId(),
                 'url' => $url,
