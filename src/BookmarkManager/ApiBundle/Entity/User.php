@@ -33,52 +33,81 @@ class User extends BaseUser
 {
     const REPOSITORY_NAME = 'User';
 
+    const GROUP_MULTIPLE = "users";
+    const GROUP_SIMPLE = "user";
+    const GROUP_ME = "me";
+
     /**
      * @ORM\Id
      * @Expose
      * @ORM\Column(type="integer")
      * @ORM\GeneratedValue(strategy="AUTO")
      *
-     * @Groups(Circle::GROUP_MULTIPLE_CIRCLES)
+     * @Groups({
+     *     User::GROUP_MULTIPLE,
+     *     User::GROUP_SIMPLE,
+     *     User::GROUP_ME,
+     *     Circle::GROUP_MULTIPLE
+     *     })
      */
     protected $id;
 
     /**
      * @var \DateTime $createdAt
-     * @Expose
+     *
      * @ORM\Column(name="created_at", type="datetime", nullable=false)
+     *
+     * @Expose
+     * @Groups({
+     *     User::GROUP_ME,
+     *     })
      */
     private $createdAt;
 
     /**
      * @var \DateTime updatedAt
-     * @Expose
      * @ORM\Column(name="updated_at", type="datetime", nullable=false)
+     *
+     * @Expose
+     * @Groups({
+     *     User::GROUP_ME
+     *     })
+     *
      */
     private $updatedAt;
 
     /**
      * @var string avatar
-     * @Expose
      * @ORM\Column(name="avatar", type="string", length=255, nullable=true)
      *
-     * @Groups(Circle::GROUP_MULTIPLE_CIRCLES)
+     * @Expose
+     * @Groups({
+     *     User::GROUP_MULTIPLE,
+     *     User::GROUP_SIMPLE,
+     *     User::GROUP_ME,
+     *     Circle::GROUP_MULTIPLE
+     *     })
      */
     private $avatar;
 
     /**
      * @var datetime lastActivity
-     * @Expose
      * @ORM\Column(name="last_activity", type="datetime", nullable=true)
      *
-     * @Groups(Circle::GROUP_MULTIPLE_CIRCLES)
+     * @Expose
+     * @Groups({
+     *     User::GROUP_MULTIPLE,
+     *     User::GROUP_SIMPLE,
+     *     User::GROUP_ME,
+     *     Circle::GROUP_MULTIPLE
+     *     })
      */
     private $lastActivity;
 
     /**
      * @var [Bookmark] bookmarks
-     * @Expose
      * @ORM\OneToMany(targetEntity="Bookmark", mappedBy="owner")
+     *
      */
     private $bookmarks;
 
@@ -86,6 +115,7 @@ class User extends BaseUser
      * @var [Tag] tags
      * @Expose
      * @ORM\OneToMany(targetEntity="Tag", mappedBy="owner")
+     *
      */
     private $tags;
 
@@ -96,6 +126,14 @@ class User extends BaseUser
      * The service to get the user's circles is /circles
      *
      * @ORM\ManyToMany(targetEntity="Circle", mappedBy="members")
+     *
+     * @Expose
+     * @Groups({
+     *     User::GROUP_MULTIPLE,
+     *     User::GROUP_SIMPLE,
+     *     User::GROUP_ME,
+     *     Circle::GROUP_MULTIPLE
+     *     })
      */
     protected $circles;
 
@@ -106,8 +144,45 @@ class User extends BaseUser
      * The service to get the user's owned circles is /circles
      *
      * @ORM\ManyToMany(targetEntity="Circle", mappedBy="admins")
+     *
+     * @Expose
+     * @Groups({
+     *     User::GROUP_MULTIPLE,
+     *     User::GROUP_SIMPLE,
+     *     User::GROUP_ME,
+     *     Circle::GROUP_MULTIPLE
+     *     })
      */
     protected $circlesAdmin;
+
+    /**
+     * @var [Book] books
+     *
+     * Disable direct Expose due to serialization bug (serialize as object instead of array)
+     * The service to get the user's owned circles is /circles
+     *
+     * @ORM\OneToMany(targetEntity="Book", mappedBy="owner")
+     *
+     * @Expose
+     * @Groups({
+     *     User::GROUP_MULTIPLE,
+     *     User::GROUP_SIMPLE,
+     *     User::GROUP_ME,
+     *     Circle::GROUP_MULTIPLE
+     *      })
+     */
+    protected $books;
+
+    // ----------------------------------------------------------------------------------------------------------------
+    // default book id
+
+    /**
+     * @ORM\Column(name="default_book_id", type="string", length=255, nullable=false)
+     *
+     * @Expose
+     * @Groups({ User::GROUP_ME })
+     */
+    public $defaultBookId = '';
 
     // ----------------------------------------------------------------------------------------------------------------
     // LIFECYCLE
@@ -119,6 +194,7 @@ class User extends BaseUser
 
         $this->circles = new \Doctrine\Common\Collections\ArrayCollection();
         $this->circlesAdmin = new \Doctrine\Common\Collections\ArrayCollection();
+        $this->books = new \Doctrine\Common\Collections\ArrayCollection();
     }
 
     /**
@@ -136,12 +212,14 @@ class User extends BaseUser
         }
     }
 
+
     // ----------------------------------------------------------------------------------------------------------------
     // Activity tracking
 
     /**
      * @Accessor(getter="isActive")
      * @Expose
+     * @Groups({ User::GROUP_MULTIPLE, User::GROUP_SIMPLE, Circle::GROUP_MULTIPLE })
      */
     public $isActive = false;
 
@@ -179,6 +257,7 @@ class User extends BaseUser
     /**
      * Returns true if the user was active in the last 15 minutes
      * @return bool
+     *
      */
     public function isActive()
     {
@@ -359,7 +438,7 @@ class User extends BaseUser
     }
 
     /**
-     * Add members
+     * Add circle
      *
      * @param \BookmarkManager\ApiBundle\Entity\Circle $circle
      * @return Circle
@@ -432,4 +511,58 @@ class User extends BaseUser
         return $this->circlesAdmin->indexOf($circleToAdministrate) !== false;
     }
 
+    /**
+     * Add book
+     *
+     * @param \BookmarkManager\ApiBundle\Entity\Book $book
+     * @return Book
+     */
+    public function addBook(Book $book)
+    {
+        if (!$this->haveBook($book)) {
+            $this->books[] = $book;
+        }
+
+        return $this;
+    }
+
+
+    public function haveBook(Book $book)
+    {
+        return $this->books->indexOf($book) !== false;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getBooks()
+    {
+        return $this->books;
+    }
+
+    /**
+     * @param mixed $books
+     */
+    public function setBooks($books)
+    {
+        $this->books = $books;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getDefaultBookId()
+    {
+        return $this->defaultBookId;
+    }
+
+    /**
+     * @param mixed $defaultBookId
+     */
+    public function setDefaultBookId($defaultBookId)
+    {
+        $this->defaultBookId = $defaultBookId;
+    }
+
 }
+

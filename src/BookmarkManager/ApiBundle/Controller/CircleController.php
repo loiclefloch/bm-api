@@ -38,6 +38,7 @@ class CircleController extends BaseController {
     {
         $user = $this->getUser();
 
+        // TODO: find all publics
         $circles = $this->getRepository(Circle::REPOSITORY_NAME)->findAll();
 
         // TODO: paging
@@ -47,7 +48,7 @@ class CircleController extends BaseController {
                 'circles' => $circles
             ],
             Response::HTTP_OK,
-            Circle::GROUP_MULTIPLE_CIRCLES
+            Circle::GROUP_MULTIPLE
         );
     }
 
@@ -102,7 +103,7 @@ class CircleController extends BaseController {
         return $this->successResponse(
             ['circles' => $user->getCircles()],
             Response::HTTP_OK,
-            Circle::GROUP_MULTIPLE_CIRCLES
+            Circle::GROUP_MULTIPLE
         );
     }
 
@@ -168,7 +169,7 @@ class CircleController extends BaseController {
             return $this->successResponse(
                 $circleEntity,
                 Response::HTTP_CREATED,
-                Circle::GROUP_SINGLE_CIRCLE
+                Circle::GROUP_SINGLE
             );
         }
 
@@ -177,7 +178,6 @@ class CircleController extends BaseController {
             $this->formErrorsToArray($form),
             Response::HTTP_BAD_REQUEST
         );
-
     }
 
     /**
@@ -223,7 +223,7 @@ class CircleController extends BaseController {
         return $this->successResponse(
             $circleEntity,
             Response::HTTP_OK,
-            Circle::GROUP_SINGLE_CIRCLE
+            Circle::GROUP_SINGLE
         );
     }
 

@@ -30,7 +30,7 @@ abstract class BookmarkType
     const MUSIC = 3;
     const CODE = 4; // for example: github code page or project
     const GAME = 5;
-    const SLIDE = 6;
+    const SLIDE = 6; // for example: slideshare
     const IMAGE = 7;
 }
 
@@ -46,6 +46,7 @@ class Bookmark
 {
     const REPOSITORY_NAME = 'Bookmark';
 
+
     /**
      * The default readingTime value. Help us to know if the readingTime have been calculated or not.
      */
@@ -58,6 +59,10 @@ class Bookmark
      */
     const AVERAGE_WORDS_PER_MINUTES = 200;
 
+    const GROUP_MULTIPLE = "bookmarks";
+
+    const GROUP_SINGLE = "bookmark";
+
     /**
      * @var integer
      *
@@ -66,7 +71,7 @@ class Bookmark
      * @ORM\GeneratedValue(strategy="AUTO")
      *
      * @Expose
-     * @Groups({"list","alone"})
+     * @Groups({Bookmark::GROUP_MULTIPLE, Bookmark::GROUP_SINGLE, Book::GROUP_MULTIPLE})
      */
     private $id;
 
@@ -76,7 +81,7 @@ class Bookmark
      * @ORM\Column(name="name", type="string", length=255, nullable=true)
      *
      * @Expose
-     * @Groups({"list","alone"})
+     * @Groups({Bookmark::GROUP_MULTIPLE, Bookmark::GROUP_SINGLE, Book::GROUP_MULTIPLE})
      */
     private $name;
 
@@ -86,7 +91,7 @@ class Bookmark
      * @ORM\Column(name="url", type="string", length=255, unique=true)
      *
      * @Expose
-     * @Groups({"list","alone"})
+     * @Groups({Bookmark::GROUP_MULTIPLE, Bookmark::GROUP_SINGLE, Book::GROUP_MULTIPLE})
      */
     private $url;
 
@@ -96,7 +101,7 @@ class Bookmark
      * @ORM\Column(name="title", type="string", length=255, nullable=true)
      *
      * @Expose
-     * @Groups({"list","alone"})
+     * @Groups({Bookmark::GROUP_MULTIPLE, Bookmark::GROUP_SINGLE, Book::GROUP_MULTIPLE})
      */
     private $title;
 
@@ -106,7 +111,7 @@ class Bookmark
      * @ORM\Column(name="icon", type="string", length=255, nullable=true)
      *
      * @Expose
-     * @Groups({"list","alone"})
+     * @Groups({Bookmark::GROUP_MULTIPLE, Bookmark::GROUP_SINGLE, Book::GROUP_MULTIPLE})
      */
     private $icon;
 
@@ -116,7 +121,7 @@ class Bookmark
      * @ORM\Column(name="notes", type="text", nullable=true)
      *
      * @Expose
-     * @Groups({"alone"})
+     * @Groups(Bookmark::GROUP_SINGLE)
      */
     private $notes;
 
@@ -124,7 +129,7 @@ class Bookmark
      * @ORM\Column(name="content", type="text", nullable=true)
      *
      * @Expose
-     * @Groups({"alone"})
+     * @Groups(Bookmark::GROUP_SINGLE)
      */
     private $content;
 
@@ -134,7 +139,7 @@ class Bookmark
      * @ORM\Column(name="description", type="string", length=255, nullable=true)
      *
      * @Expose
-     * @Groups({"list","alone"})
+     * @Groups({Bookmark::GROUP_MULTIPLE, Bookmark::GROUP_SINGLE, Book::GROUP_MULTIPLE})
      */
     private $description;
 
@@ -144,15 +149,24 @@ class Bookmark
      * @ORM\Column(name="type", type="smallint", nullable=false)
      *
      * @Expose
-     * @Groups({"list","alone"})
+     * @Groups({Bookmark::GROUP_MULTIPLE, Bookmark::GROUP_SINGLE, Book::GROUP_MULTIPLE})
      */
     private $type;
 
     /**
      * @var Bookmark teams
      * @ORM\ManyToOne(targetEntity="User", inversedBy="bookmarks")
+     *
+     * @deprecated
      */
     private $owner;
+
+    /**
+     * @ORM\ManyToMany(targetEntity="Book", inversedBy="bookmarks")
+     *
+     * @deprecated
+     */
+    private $books;
 
     /**
      * @var ArrayCollection tags
@@ -160,7 +174,7 @@ class Bookmark
      * @ORM\ManyToMany(targetEntity="Tag", cascade={"persist"})
      *
      * @Expose
-     * @Groups({"list","alone"})
+     * @Groups({Bookmark::GROUP_MULTIPLE, Bookmark::GROUP_SINGLE, Book::GROUP_MULTIPLE})
      */
     private $tags;
 
@@ -170,7 +184,7 @@ class Bookmark
      * @ORM\Column(name="created_at", type="datetime")
      *
      * @Expose
-     * @Groups({"list","alone"})
+     * @Groups({Bookmark::GROUP_MULTIPLE, Bookmark::GROUP_SINGLE, Book::GROUP_MULTIPLE})
      */
     private $createdAt;
 
@@ -180,7 +194,7 @@ class Bookmark
      * @ORM\Column(name="updated_at", type="datetime")
      *
      * @Expose
-     * @Groups({"list","alone"})
+     * @Groups({Bookmark::GROUP_MULTIPLE, Bookmark::GROUP_SINGLE, Book::GROUP_MULTIPLE})
      */
     private $updatedAt;
 
@@ -190,7 +204,7 @@ class Bookmark
      * @ORM\Column(name="preview_picture", type="text", nullable=true)
      *
      * @Expose
-     * @Groups({"list", "alone"})
+     * @Groups({Bookmark::GROUP_MULTIPLE, Bookmark::GROUP_SINGLE, Book::GROUP_MULTIPLE})
      */
     private $previewPicture;
 
@@ -203,7 +217,7 @@ class Bookmark
      * @see #getReadingTime
      *
      * @Expose
-     * @Groups({"list", "alone"})
+     * @Groups({Bookmark::GROUP_MULTIPLE, Bookmark::GROUP_SINGLE, Book::GROUP_MULTIPLE})
      */
     private $readingTime = Bookmark::DEFAULT_READING_TIME;
 
@@ -213,9 +227,19 @@ class Bookmark
      * @ORM\Column(name="is_read", type="boolean", options={"default": false})
      *
      * @Expose
-     * @Groups({"list", "alone"})
+     * @Groups({Bookmark::GROUP_MULTIPLE, Bookmark::GROUP_SINGLE, Book::GROUP_MULTIPLE})
      */
     private $read = false;
+
+    /**
+     * @var array
+     * Contains all the parsed og data
+     *
+     * @ORM\Column(name="website_info", type="json_array")
+     * @Expose
+     * @Groups({Bookmark::GROUP_MULTIPLE, Bookmark::GROUP_SINGLE, Book::GROUP_MULTIPLE})
+     */
+    private $websiteInfo;
 
     // ----------------------------------------------------------------------------------------------------------------
     // LIFECYCLE
@@ -613,6 +637,52 @@ class Bookmark
     public function setRead($read)
     {
         $this->read = $read;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getBooks()
+    {
+        return $this->books;
+    }
+
+    /**
+     * @param mixed $books
+     */
+    public function setBooks($books)
+    {
+        $this->books = $books;
+    }
+
+    public function addBook(Book $book)
+    {
+        if (!$this->haveBook($book)) {
+            $this->books[] = $book;
+        }
+
+        return $this;
+    }
+
+    public function haveBook(Book $book)
+    {
+        return $this->books->indexOf($book) !== false;
+    }
+
+    /**
+     * @return array
+     */
+    public function getWebsiteInfo()
+    {
+        return $this->websiteInfo;
+    }
+
+    /**
+     * @param array $websiteInfo json array
+     */
+    public function setWebsiteInfo($websiteInfo)
+    {
+        $this->websiteInfo = $websiteInfo;
     }
 
 

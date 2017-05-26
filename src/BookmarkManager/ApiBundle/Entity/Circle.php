@@ -13,7 +13,8 @@ use JMS\Serializer\Annotation\Groups;
  *
  * TODO:
  * - private / public
- * - picture
+ * - picture (icon)
+ * - picture (cover)
  *
  * @ORM\Table(name="circles")
  * @ORM\Entity
@@ -22,8 +23,8 @@ class Circle
 {
     const REPOSITORY_NAME = 'Circle';
 
-    const GROUP_MULTIPLE_CIRCLES = ["circles"];
-    const GROUP_SINGLE_CIRCLE = ["circles", "circle"];
+    const GROUP_MULTIPLE = "circles";
+    const GROUP_SINGLE = "circle";
 
     /**
      * @var integer
@@ -32,23 +33,45 @@ class Circle
      * @ORM\Id
      * @ORM\GeneratedValue(strategy="AUTO")
      *
-     * @Groups(Circle::GROUP_MULTIPLE_CIRCLES)
+     * @Groups({
+     *     Circle::GROUP_MULTIPLE,
+     *     Circle::GROUP_SINGLE,
+     *     User::GROUP_SIMPLE,
+     *     User::GROUP_ME
+     *      })
      */
     private $id;
 
     /**
      * @var string
      *
-     * @ORM\Column(name="name", type="string", length=255, unique=true)
-     * @Groups(Circle::GROUP_MULTIPLE_CIRCLES)
+     * @ORM\Column(name="name", type="string", length=50, unique=true)
+     * @Groups({
+     *     Circle::GROUP_MULTIPLE,
+     *     Circle::GROUP_SINGLE
+     *     })
      */
     private $name;
+
+    /**
+     * @var string
+     *
+     * @ORM\Column(name="description", type="string", length=255)
+     * @Groups({
+     *     Circle::GROUP_MULTIPLE,
+     *     Circle::GROUP_SINGLE
+     *     })
+     */
+    private $description;
 
     /**
      * @var array
      *
      * @ORM\ManyToMany(targetEntity="User", inversedBy="circles")
-     * @Groups(Circle::GROUP_MULTIPLE_CIRCLES)
+     * @Groups({
+     *     Circle::GROUP_MULTIPLE,
+     *     Circle::GROUP_SINGLE
+     *     })
      */
     private $members;
 
@@ -58,7 +81,10 @@ class Circle
      *
      * @ORM\ManyToMany(targetEntity="User", inversedBy="circlesAdmin")
      * @ORM\JoinTable(name="circleadmins")
-     * @Groups(Circle::GROUP_MULTIPLE_CIRCLES)
+     * @Groups({
+     *     Circle::GROUP_MULTIPLE,
+     *     Circle::GROUP_SINGLE
+     *     })
      */
     private $admins;
 
@@ -193,5 +219,22 @@ class Circle
     {
         $this->admins->removeElement($admin);
     }
+
+    /**
+     * @return string
+     */
+    public function getDescription()
+    {
+        return $this->description;
+    }
+
+    /**
+     * @param string $description
+     */
+    public function setDescription($description)
+    {
+        $this->description = $description;
+    }
+
 
 }

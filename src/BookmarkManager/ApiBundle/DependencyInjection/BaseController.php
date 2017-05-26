@@ -34,7 +34,9 @@ class BaseController extends FOSRestController
         $view->setData($data);
 
         if (!empty($groups)) {
-            $context = SerializationContext::create()->setGroups($groups);
+            $context = SerializationContext::create()
+                ->enableMaxDepthChecks()
+                ->setGroups($groups);
             $view->setSerializationContext($context);
         }
 
@@ -51,6 +53,9 @@ class BaseController extends FOSRestController
      */
     protected function successResponse($data = array(), $httpCode = Response::HTTP_OK, $groups = [], $paging = [])
     {
+        if (!is_array($groups)) {
+            $groups = [ $groups ];
+        }
         if (!empty($paging)) {
             if (isset($paging['last_page'])
                 && isset($paging['results']) && isset($paging['total'])
@@ -241,7 +246,7 @@ class BaseController extends FOSRestController
      * @param $form
      * @return array
      */
-    protected function formErrorsToArray($form)
+    protected function formErrorsToArray(Form $form)
     {
        return ArrayUtils::formErrorsToArray($form);
     }

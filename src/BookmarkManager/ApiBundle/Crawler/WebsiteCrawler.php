@@ -54,12 +54,6 @@ class WebsiteCrawler
 
         if ($html) {
 
-            try {
-                $title = trim($crawler->filter('head > title')->text());
-            } catch (Exception $e) {
-                $title = 'Unknown title';
-            }
-
             // -- Meta name
 
             $metaNameCrawler = $crawler->filter('head > meta')->reduce(
@@ -73,7 +67,7 @@ class WebsiteCrawler
 
             $metaNames = [];
             foreach ($metaNameCrawler as $item) {
-                $name = $item->getAttribute('name');
+                $name = strtolower($item->getAttribute('name'));
                 $content = $item->getAttribute('content');
 
                 $metaNames[$name] = $content;
@@ -92,7 +86,7 @@ class WebsiteCrawler
 
             $metaProperties = [];
             foreach ($metaPropertyCrawler as $item) {
-                $name = $item->getAttribute('property');
+                $name = strtolower($item->getAttribute('property'));
                 $content = $item->getAttribute('content');
 
                 $metaProperties[$name] = $content;
@@ -109,9 +103,14 @@ class WebsiteCrawler
 
             // -- Retrieve website's information
 
-            $websiteInfo['author'] = trim($this->array_get_key('Author', $metaNames));
-            $websiteInfo['keywords'] = trim($this->array_get_key('Keywords', $metaNames));
-            $websiteInfo['description'] = trim($this->array_get_key('description', $metaProperties));
+            $websiteInfo['authorAvatar'] = ''; // have to be found on crawler plugins. See MediumCrawlerPlugin for example.
+            $websiteInfo['author'] = trim($this->array_get_key([ 'article:author', 'author', 'og:author' ], $metaProperties));
+            $websiteInfo['title'] = trim($this->array_get_key([ 'article:title',  'title', 'og:title' ], $metaProperties));
+            $websiteInfo['keywords'] = trim($this->array_get_key('keywords', $metaProperties));
+            $websiteInfo['description'] = trim($this->array_get_key([ 'description', 'og:description' ], $metaProperties));
+
+            // add properties
+            $websiteInfo['meta'] = $metaProperties;
 
             $ogData = $this->handleOg($html, $bookmark);
 
@@ -165,8 +164,17 @@ class WebsiteCrawler
                 $bookmark->setPreviewPicture($ogImage);
             }
 
+            try {
+                $title = trim($crawler->filter('head > title')->text());
+            } catch (Exception $e) {
+                $title = $websiteInfo['title'];
+            }
+
+
             $bookmark->setTitle($title);
             $bookmark->setDescription($description);
+
+            $bookmark->setWebsiteInfo($websiteInfo);
         }
 
         // -----------------
@@ -469,21 +477,25 @@ class WebsiteCrawler
 
     /**
      * Returns the value at the given key or null. If the value exists, the value is trim.
-     * @param $key
+     * @param $keys array|string key or an array of key. Returns the first value found, so the array must be sort
+     *  by priority.
      * @param $array
      * @param null $default
      * @return null|string
      */
-    protected function array_get_key($key, $array, $default = null)
+    protected function array_get_key($keys, $array, $default = null)
     {
-        if (isset($array[$key])) {
-            $value = $array[$key];
-            if (isset($value)) {
-                if (is_string($value)) {
-                    return trim($value);
-                }
+        $keys = is_array($keys) ? $keys : [ $keys ];
+        foreach ($keys as $key) {
+            if (isset($array[strtolower($key)])) {
+                $value = $array[strtolower($key)];
+                if (isset($value)) {
+                    if (is_string($value)) {
+                        return trim($value);
+                    }
 
-                return $value;
+                    return $value;
+                }
             }
         }
 

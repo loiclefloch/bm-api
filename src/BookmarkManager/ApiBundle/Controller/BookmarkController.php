@@ -122,7 +122,11 @@ class BookmarkController extends BaseController
             return ($this->errorResponse(102, 'resource not found', Response::HTTP_BAD_REQUEST));
         }
 
-        return ($this->successResponse(array('bookmarks' => $data), Response::HTTP_OK, ['list'], $paging));
+        return $this->successResponse(array('bookmarks' => $data),
+                Response::HTTP_OK,
+                [Bookmark::GROUP_MULTIPLE],
+                $paging
+        );
     }
 
     /**
@@ -174,7 +178,11 @@ class BookmarkController extends BaseController
             return $this->errorResponse(104, 'Unknown error ' . $e, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
 
-        return $this->successResponse($bookmarkEntity, Response::HTTP_CREATED);
+        return $this->successResponse(
+            $bookmarkEntity,
+            Response::HTTP_CREATED,
+            [Bookmark::GROUP_SINGLE]
+        );
     }
 
     /**
@@ -222,7 +230,11 @@ class BookmarkController extends BaseController
             return $this->notFoundResponse();
         }
 
-        return $this->successResponse($bookmarkEntity, Response::HTTP_OK, ['alone']);
+        return $this->successResponse(
+            $bookmarkEntity,
+            Response::HTTP_OK,
+            [Bookmark::GROUP_SINGLE]
+        );
     }
 
     /**
@@ -285,7 +297,11 @@ class BookmarkController extends BaseController
         if ($editForm->isValid()) {
             $this->persistEntity($bookmarkEntity);
 
-            return $this->successResponse($bookmarkEntity, Response::HTTP_OK, ['alone']);
+            return $this->successResponse(
+                $bookmarkEntity,
+                Response::HTTP_OK,
+                Bookmark::GROUP_SINGLE
+            );
         }
 
         return $this->errorResponse(
@@ -452,7 +468,7 @@ class BookmarkController extends BaseController
         }
         $this->persistEntity($bookmarkEntity);
 
-        return $this->successResponse($bookmarkEntity, Response::HTTP_CREATED, ['alone']);
+        return $this->successResponse($bookmarkEntity, Response::HTTP_CREATED, Bookmark::GROUP_SINGLE);
     }
 
     /**
@@ -554,7 +570,7 @@ class BookmarkController extends BaseController
         }
         $this->persistEntity($bookmarkEntity);
 
-        return $this->successResponse($bookmarkEntity, Response::HTTP_OK, ['alone']);
+        return $this->successResponse($bookmarkEntity, Response::HTTP_OK, Bookmark::GROUP_SINGLE);
     }
 
     /**
@@ -588,6 +604,6 @@ class BookmarkController extends BaseController
             return $this->errorResponse(104, 'Unknown error' . $e->getMessage(), Response::HTTP_BAD_REQUEST);
         }
 
-        return $this->successResponse($bookmarkEntity, Response::HTTP_OK, ['alone']);
+        return $this->successResponse($bookmarkEntity, Response::HTTP_OK, Bookmark::GROUP_SINGLE);
     }
 }

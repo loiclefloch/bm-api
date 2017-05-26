@@ -3,9 +3,10 @@ FOS\UserBundle\Model\User:
     properties:
         username:
             expose: true
-            groups: ["circle", "circles"]
+            groups: ["circle", "circles", "me", "user", "users"]
         email:
             expose: true
+            groups: ["circle", "circles", "me", "users", "user"]
         enabled:
             expose: true
         last_login:
@@ -18,3 +19,4 @@ FOS\UserBundle\Model\User:
             expose: true
         roles:
             expose: true
+            groups: ["circle", "circles", "me", "users", "user"]

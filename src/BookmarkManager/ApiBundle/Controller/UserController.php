@@ -39,7 +39,7 @@ class UserController extends BaseController
             return $this->errorResponse(101, "User is anonymous", Response::HTTP_UNAUTHORIZED);
         }
 
-        return $this->successResponse($user, Response::HTTP_OK);
+        return $this->successResponse($user, Response::HTTP_OK, User::GROUP_ME);
     }
 
     /**
@@ -77,13 +77,13 @@ class UserController extends BaseController
             return $this->errorResponse(101, "The id must be numeric", Response::HTTP_BAD_REQUEST);
         }
 
-        $user = $this->getRepository("User")->find($userId);
+        $user = $this->getRepository(User::REPOSITORY_NAME)->find($userId);
 
         if (!$user) {
             return $this->notFoundResponse();
         }
 
-        return $this->successResponse($user, Response::HTTP_OK);
+        return $this->successResponse($user, Response::HTTP_OK, User::GROUP_SIMPLE);
     }
 
     /**
@@ -95,6 +95,7 @@ class UserController extends BaseController
      */
     public function getUsersAction()
     {
+        // TODO
         return $this->getRepository(User::REPOSITORY_NAME)->findAll();
     }
 
@@ -126,6 +127,7 @@ class UserController extends BaseController
      */
     public function postUserAction(Request $request)
     {
+        $user = $this->getUser();
 
 //        var_dump($request->getContent());
         //$debug = $request->get('email');
@@ -156,8 +158,6 @@ class UserController extends BaseController
 
         $userManager->updateUser($user);
 
-        // TODO: create empty book.
-
         $error = $this->getEntityErrors($user);
         if (count($error) > 0) {
             return $this->errorResponse(
@@ -168,7 +168,19 @@ class UserController extends BaseController
 
         }
 
-        return $this->successResponse($user, Response::HTTP_CREATED);
+        // -- create empty default book.
+        $book = new Book();
+        $book->setName($user->getUsername() . '\'s book');
+        $book->setOwner($user);
+        $book->setIsDefaultBook(true);
+        $this->persistEntity($book);
+
+
+        $user->addBook($book);
+        $user->setDefaultBookId($book->getId());
+        $this->persistEntity($user);
+
+        return $this->successResponse($user, Response::HTTP_CREATED, User::GROUP_SIMPLE);
     }
 
     /**
@@ -224,6 +236,6 @@ class UserController extends BaseController
 
         $userManager->updateUser($user, true);
 
-        return $this->successResponse($user, Response::HTTP_CREATED);
+        return $this->successResponse($user, Response::HTTP_CREATED, User::GROUP_SIMPLE);
     }
 }

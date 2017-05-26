@@ -7,8 +7,9 @@ use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolverInterface;
 use Symfony\Component\Validator\Constraints as Assert;
 
-class CircleType extends AbstractType
+class BookType extends AbstractType
 {
+
     /**
      * @param FormBuilderInterface $builder
      * @param array $options
@@ -28,27 +29,6 @@ class CircleType extends AbstractType
                             ),
                         ] : []),
                 ]
-            )
-            ->add(
-                'description',
-                'text',
-                [
-                    'required' => !$options['ignoreRequired'],
-                    'constraints' => (!$options['ignoreRequired'] ?
-                        [
-                            new Assert\NotBlank(
-                                array('message' => 'name is required')
-                            )
-                        ] : []),
-                ]
-            )
-            ->add(
-                'members',
-                'collection',
-                [
-                    'required' => true,
-                    'mapped' => false,
-                ]
             );
     }
 
@@ -59,7 +39,7 @@ class CircleType extends AbstractType
     {
         $resolver->setDefaults(
             array(
-                'data_class' => 'BookmarkManager\ApiBundle\Entity\Circle',
+                'data_class' => 'BookmarkManager\ApiBundle\Entity\Book',
                 'ignoreRequired' => false,
             )
         );
@@ -70,6 +50,6 @@ class CircleType extends AbstractType
      */
     public function getName()
     {
-        return 'bookmarkmanager_apibundle_team';
+        return 'bookmarkmanager_apibundle_book';
     }
 }

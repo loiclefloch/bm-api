@@ -18,8 +18,11 @@ use JMS\Serializer\Annotation\Groups;
  */
 class Tag
 {
-
     public static $DEFAULT_COLOR = '#c2c2c2';
+
+    const GROUP_MULTIPLE = "tags";
+
+    const GROUP_SINGLE = "tag";
 
     /**
      * @var integer
@@ -29,7 +32,7 @@ class Tag
      * @ORM\GeneratedValue(strategy="AUTO")
      *
      * @Expose
-     * @Groups({"list","alone"})
+     * @Groups({ Tag::GROUP_MULTIPLE, TAG::GROUP_SINGLE, Bookmark::GROUP_SINGLE, BOOKMARK::GROUP_MULTIPLE, User::GROUP_SIMPLE })
      */
     private $id;
 
@@ -39,7 +42,7 @@ class Tag
      * @ORM\Column(name="name", type="string", length=255)
      *
      * @Expose
-     * @Groups({"list","alone"})
+     * @Groups({ Tag::GROUP_MULTIPLE, TAG::GROUP_SINGLE, Bookmark::GROUP_SINGLE, BOOKMARK::GROUP_MULTIPLE })
      */
     private $name;
 
@@ -49,7 +52,7 @@ class Tag
      * @ORM\Column(name="color", type="string", length=7, nullable=true)
      *
      * @Expose
-     * @Groups({"list","alone"})
+     * @Groups({ Tag::GROUP_MULTIPLE, TAG::GROUP_SINGLE, Bookmark::GROUP_SINGLE, BOOKMARK::GROUP_MULTIPLE })
      */
     private $color;
 
@@ -63,7 +66,7 @@ class Tag
     // LIFECYCLE
     // ----------------------------------------------------------------------------------------------------------------
 
-    
+
     public function __construct()
     {
         $this->setColor(Tag::$DEFAULT_COLOR);
@@ -77,7 +80,7 @@ class Tag
     /**
      * Get id
      *
-     * @return integer 
+     * @return integer
      */
     public function getId()
     {
@@ -100,7 +103,7 @@ class Tag
     /**
      * Get name
      *
-     * @return string 
+     * @return string
      */
     public function getName()
     {
@@ -123,7 +126,7 @@ class Tag
     /**
      * Get color
      *
-     * @return string 
+     * @return string
      */
     public function getColor()
     {
@@ -146,7 +149,7 @@ class Tag
     /**
      * Get owner
      *
-     * @return User 
+     * @return User
      */
     public function getOwner()
     {

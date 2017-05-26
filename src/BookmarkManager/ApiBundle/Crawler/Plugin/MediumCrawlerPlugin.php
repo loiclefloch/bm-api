@@ -28,14 +28,26 @@ class MediumCrawlerPlugin extends CrawlerPlugin
     public function parse(Crawler $crawler, Bookmark $bookmark)
     {
 
-        if ($crawler->filter('.postArticle-content')->count()) {
-            $crawler = $crawler->filter('.postArticle-content');
-            $bookmark->setContent($crawler->html());
+        $contentNode = $crawler->filter('.postArticle-content');
+        if ($contentNode->count()) {
+            $bookmark->setContent($contentNode->html());
         }
 
         // -- Title˙
         // Remove ' – Medium' from the title. Warning: '–' is not a '-'.
         $bookmark->setTitle(str_replace(' – Medium', '', $bookmark->getTitle()));
+
+        $websiteInfo = $bookmark->getWebsiteInfo();
+
+
+        $avatarImg = $this->getClass($crawler, '.avatar-image--small');
+        if ($avatarImg !== null) {
+            $avatarUrl = $avatarImg->getAttribute('src');
+            $websiteInfo['authorAvatar'] = $avatarUrl;
+        }
+
+
+        $bookmark->setWebsiteInfo($websiteInfo);
 
         return $bookmark;
     }
