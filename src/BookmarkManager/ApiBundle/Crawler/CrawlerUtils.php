@@ -56,7 +56,20 @@ class CrawlerUtils
 
                 CURL_HTTP_VERSION_1_1 => true,
 
-                CURLOPT_USERAGENT     => $userAgent
+                CURLOPT_USERAGENT     => $userAgent,
+
+                //
+                // One of:
+                // CURL_SSLVERSION_DEFAULT (0), 
+                // CURL_SSLVERSION_TLSv1 (1), 
+                // CURL_SSLVERSION_SSLv2 (2), 
+                // CURL_SSLVERSION_SSLv3 (3), 
+                // CURL_SSLVERSION_TLSv1_0 (4), 
+                // CURL_SSLVERSION_TLSv1_1 (5) 
+                // or CURL_SSLVERSION_TLSv1_2 (6).
+                // Note: Setting it to 2 or 3 is very dangerous given the known vulnerabilities in SSLv2 and SSLv3.
+                // Tried to change value here to fix the `alert handshake failure` bug, didn't worked.
+                // CURLOPT_SSLVERSION    => 0
             );
 
             curl_setopt_array($curl, $options);
@@ -64,9 +77,16 @@ class CrawlerUtils
             $data = curl_exec($curl);
 
             $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-            $httpCodeOK = isset($httpCode) && ($httpCode == 200 || $httpCode == 301);
+            $httpCodeOK = isset($httpCode) && ($httpCode >= 200 && $httpCode <= 301);
 
-//            print curl_error($curl);
+            // TODO: errors to handle:
+
+            // -  'error:14077410:SSL routines:SSL23_GET_SERVER_HELLO:sslv3 alert handshake failure', due to ssl with curl
+
+            // uncomment to debug
+            // TODO: add curl_error results to the CrawlerRetrieveDataException thrown exception
+            // print curl_error($curl);
+            // die();
 
             curl_close($curl);
         }
@@ -95,7 +115,7 @@ class CrawlerUtils
 
             return $data;
         } else {
-            if ($httpCode == 404 || $httpCode == 0) {
+            if ($httpCode == 404) {
                 throw new CrawlerNotFoundException("404 error", $httpCode);
             }
             throw new CrawlerRetrieveDataException("Could not retrieve content", $httpCode);

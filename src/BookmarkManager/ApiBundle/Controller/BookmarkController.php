@@ -157,18 +157,11 @@ class BookmarkController extends BaseController
      */
     public function postBookmarkAction(Request $request)
     {
+        //return $this->postCrawlerTestAction($request);
         $data = $request->request->all();
 
         try {
             $bookmarkEntity = BookmarkUtils::createBookmark($this, $data);
-        } catch (CrawlerNotFoundException $e) {
-            $this->getLogger()->info('[IMPORT] 404 for '.$data['url']);
-
-            return $this->notFoundResponse();
-        } catch (CrawlerRetrieveDataException $e) {
-            $this->getLogger()->info('[IMPORT] Impossible to retrieve the website content for '.$data['url']);
-
-            return $this->errorResponse(103, 'Impossible to retrieve the website content.', Response::HTTP_BAD_REQUEST);
         } catch (BmAlreadyExistsException $e) {
             return $this->errorResponse($e->getErrorCode(), $e->getMessage(), $e->getHttpCode());
         }
@@ -365,10 +358,113 @@ class BookmarkController extends BaseController
     //    /bookmarks/{id}/tags
     // ---------------------------------------------------------------------------------------------------------------
 
+    /**
+     * Update an existing Bookmark's tags.
+     *
+     * @ApiDoc(
+     *  description="Update tag(s) of the bookmark",
+     *  requirements={
+     *      {
+     *          "name"="bookmarkId",
+     *          "dataType"="integer",
+     *          "requirement"="[\d]+",
+     *          "description"="Bookmark id"
+     *      }
+     *  },
+     *  parameters={
+     *     {
+     *          "name"="tag",
+     *          "dataType"="Tag|integer",
+     *          "required"=false
+     *     },
+     *     {
+     *          "name"="tags",
+     *          "dataType"="Array: Tag|integer",
+     *          "required"=false
+     *     }
+     *  },
+     *  statusCodes={
+     *      201="Returned when successfully created.",
+     *      404="Returned when the bookmark is not found.",
+     *      400="Returned when the parameter is invalid."
+     *  }
+     * )
+     *
+     * @ApiErrors({
+     *      { 101, "The bookmark id must be numeric" },
+     *      { 102, "The tag id must be numeric" },
+     *      { 103, "You must specify a 'tag' or 'tags' field" },
+     *      { 104, "None tag id found" }
+     * })
+     * @param Request $request
+     * @param $bookmarkId
+     * @return Response
+     */
+    public function putBookmarkTagsAction(Request $request, $bookmarkId)
+    {
+
+        if (!is_numeric($bookmarkId)) {
+            return $this->errorResponse(101, "The id must be numeric", Response::HTTP_BAD_REQUEST);
+        }
+
+        // -- get bookmark
+        $bookmarkEntity = $this->getRepository(Bookmark::REPOSITORY_NAME)->findOneBy(
+            [
+                'id' => $bookmarkId,
+                'owner' => $this->getUser(),
+            ]
+        );
+
+        if (!$bookmarkEntity) {
+            return $this->notFoundResponse();
+        }
+
+        // -- Format tags data
+        $data = $request->request->all();
+
+        $tags = [];
+        if (!empty($data['tags'])) {
+            $tags = $data['tags'];
+        } elseif (!empty($data['tag'])) {
+            $tags = [$data['tag']];
+        }
+
+        // reset tags
+        $bookmarkEntity->clearTags();
+
+        // for each tag, try to create it if does not exists.
+        foreach ($tags as $tag) {
+
+            if (is_numeric($tag)) {
+                $tagId = $tag;
+            } elseif (isset($tag['id'])) {
+                $tagId = $tag['id'];
+            } else {
+                return $this->errorResponse(104, 'No tag id found', Response::HTTP_BAD_REQUEST);
+            }
+
+            $tagEntity = $this->getRepository('Tag')->findOneBy(
+                [
+                    'id' => $tagId,
+                    'owner' => $this->getUser(),
+                ]
+            );
+
+            if (!$tagEntity) {
+                $tagEntity = TagUtils::createTag($this, $tag);
+            }
+
+            $bookmarkEntity->addTag($tagEntity);
+        }
+        $this->persistEntity($bookmarkEntity);
+
+        return $this->successResponse($bookmarkEntity, Response::HTTP_CREATED, Bookmark::GROUP_SINGLE);
+    }
+
 
     /**
      * Update an existing Bookmark by adding one or multiple tag.
-     * 
+     *
      * @ApiDoc(
      *  description="Add tag(s) to bookmark",
      *  requirements={

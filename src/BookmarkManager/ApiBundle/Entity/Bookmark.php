@@ -35,6 +35,31 @@ abstract class BookmarkType
 }
 
 /**
+ * Define the different possible status for the bookmark considering the content crawler.
+ *
+ * Class BookmarkCrawlerStatus
+ * @package BookmarkManager\ApiBundle\Entity
+ */
+abstract class BookmarkCrawlerStatus
+{
+    /**
+     * Could not retrieve the content
+     */
+    const NO_RETRIEVE = 0;
+
+    /**
+     * Retrieved content, but there is some issues with
+     * Can be set manually by the front
+     */
+    const CONTENT_BUG = 1;
+
+    /**
+     * Content correctly retrieved
+     */
+    const RETRIEVED = 2;
+}
+
+/**
  * Bookmark
  * @ORM\HasLifecycleCallbacks
  * @ORM\Table()
@@ -62,6 +87,11 @@ class Bookmark
     const GROUP_MULTIPLE = "bookmarks";
 
     const GROUP_SINGLE = "bookmark";
+
+    /**
+     * The class of a slide on the `content`.
+     */
+    const SLIDE_IMAGE_CLASS = 'img.slide_image';
 
     /**
      * @var integer
@@ -240,6 +270,15 @@ class Bookmark
      * @Groups({Bookmark::GROUP_MULTIPLE, Bookmark::GROUP_SINGLE, Book::GROUP_MULTIPLE})
      */
     private $websiteInfo;
+
+    /**
+     * @var BookmarkCrawlerStatus
+     *
+     * @ORM\Column(name="crawler_status", type="smallint", nullable=false, options={"default": 2})
+     * @Expose
+     * @Groups({Bookmark::GROUP_MULTIPLE, Bookmark::GROUP_SINGLE, Book::GROUP_MULTIPLE})
+     */
+    private $crawlerStatus;
 
     // ----------------------------------------------------------------------------------------------------------------
     // LIFECYCLE
@@ -458,6 +497,12 @@ class Bookmark
         return $this->owner;
     }
 
+
+    public function clearTags()
+    {
+        $this->tags = new ArrayCollection();
+    }
+
     /**
      * Add tags
      *
@@ -476,8 +521,10 @@ class Bookmark
 
     public function addTags($tagsFound)
     {
-        foreach ($tagsFound as $tag) {
-            $this->addTag($tag);
+        if (is_array($tagsFound)) {
+            foreach ($tagsFound as $tag) {
+                $this->addTag($tag);
+            }
         }
 
         return $this;
@@ -492,6 +539,7 @@ class Bookmark
     public function removeTag(Tag $tag)
     {
         $this->tags->removeElement($tag);
+
         return $this;
     }
 
@@ -540,7 +588,14 @@ class Bookmark
          * Add the charset for the DomCrawler to use UTF-8 and not the default 'ISO-8859-1'.
          * @see Crawler#addContent
          */
-        $this->content = "<!DOCTYPE html><html><head><meta charset='utf-8>' /></head><body>" . $content . "</body></html>";
+        $this->content = "<!DOCTYPE html><html><head><meta charset='utf-8>' /></head><body>".$content."</body></html>";
+
+        return $this;
+    }
+
+    public function removeContent()
+    {
+        $this->content = "";
 
         return $this;
     }
@@ -685,5 +740,20 @@ class Bookmark
         $this->websiteInfo = $websiteInfo;
     }
 
+    /**
+     * @return mixed
+     */
+    public function getCrawlerStatus()
+    {
+        return $this->crawlerStatus;
+    }
+
+    /**
+     * @param mixed $crawlerStatus
+     */
+    public function setCrawlerStatus($crawlerStatus)
+    {
+        $this->crawlerStatus = $crawlerStatus;
+    }
 
 }

@@ -50,6 +50,7 @@ namespace BookmarkManager\ApiBundle\Crawler\Readability;
 
 // This class allows us to do JavaScript like assignements to innerHTML
 use DOMDocument;
+use DOMElement;
 use DOMXPath;
 
 require_once(dirname(__FILE__).'/JSLikeHTMLElement.php');
@@ -77,6 +78,10 @@ class Readability
     public $convertLinksToFootnotes = false;
     public $revertForcedParagraphElements = true;
     public $articleTitle;
+
+    /**
+     * @var DOMElement
+     */
     public $articleContent;
     public $dom;
     public $url = null; // optional - URL where HTML was retrieved

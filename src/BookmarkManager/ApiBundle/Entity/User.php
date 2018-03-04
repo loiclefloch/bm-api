@@ -47,7 +47,8 @@ class User extends BaseUser
      *     User::GROUP_MULTIPLE,
      *     User::GROUP_SIMPLE,
      *     User::GROUP_ME,
-     *     Circle::GROUP_MULTIPLE
+     *     Circle::GROUP_MULTIPLE,
+     *     Circle::GROUP_SINGLE
      *     })
      */
     protected $id;
@@ -181,6 +182,7 @@ class User extends BaseUser
      *
      * @Expose
      * @Groups({ User::GROUP_ME })
+     *
      */
     public $defaultBookId = '';
 

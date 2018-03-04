@@ -57,6 +57,15 @@ class BaseController extends FOSRestController
             $groups = [ $groups ];
         }
         if (!empty($paging)) {
+            // TODO: remove this and fix bad data given as string instead of int
+            if (isset($paging['page'])) {
+                $paging['page'] = (int)$paging['page'];
+            }
+            if (isset($paging['limit'])) {
+                $paging['limit'] = (int)$paging['limit'];
+            }
+            // END
+
             if (isset($paging['last_page'])
                 && isset($paging['results']) && isset($paging['total'])
             ) {
@@ -93,7 +102,7 @@ class BaseController extends FOSRestController
                         $final['paging'],
                         array(
                             'metas' => array(
-                                'page' => $paging['page'],
+                                'page' => (int)$paging['page'],
                             ),
                             'links' => array(
                                 'first' => ($url.'?'.http_build_query(
@@ -184,6 +193,17 @@ class BaseController extends FOSRestController
 
     // ---------------------------------------------------------------------------------------------------------------
 
+
+    /**
+     *
+     * ```php
+     * $this->getRepository(Bookmark::REPOSITORY_NAME);
+     * ```
+     *
+     * @param null $name The repository name. Use a constant: Ex: `BOOKMARK::REPOSITORY_NAME`
+     * @return \Doctrine\Common\Persistence\ObjectRepository
+     *
+     */
     public function getRepository($name = null)
     {
         assert($name !== null, "repository name is null");

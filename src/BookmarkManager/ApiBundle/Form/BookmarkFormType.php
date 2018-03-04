@@ -2,6 +2,7 @@
 
 namespace BookmarkManager\ApiBundle\Form;
 
+use BookmarkManager\ApiBundle\Entity\BookmarkCrawlerStatus;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolverInterface;
@@ -53,6 +54,18 @@ class BookmarkFormType extends AbstractType
                 ]
             )
             ->add(
+                'crawlerStatus',
+                'choice',
+                [
+                    'required' => false,
+                    'choices' => [
+                        BookmarkCrawlerStatus::NO_RETRIEVE,
+                        BookmarkCrawlerStatus::CONTENT_BUG,
+                        BookmarkCrawlerStatus::RETRIEVED
+                    ]
+                ]
+            )
+            ->add(
                 'notes',
                 'text',
                 [
@@ -72,6 +85,7 @@ class BookmarkFormType extends AbstractType
             array(
                 'data_class' => 'BookmarkManager\ApiBundle\Entity\Bookmark',
                 'ignoreRequired' => false,
+                'allow_extra_fields' => true,
             )
         );
     }

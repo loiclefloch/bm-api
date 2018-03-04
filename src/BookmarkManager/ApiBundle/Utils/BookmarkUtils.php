@@ -11,6 +11,7 @@ namespace BookmarkManager\ApiBundle\Utils;
 use BookmarkManager\ApiBundle\Crawler\CrawlerNotFoundException;
 use BookmarkManager\ApiBundle\Crawler\CrawlerRetrieveDataException;
 use BookmarkManager\ApiBundle\Entity\Bookmark;
+use BookmarkManager\ApiBundle\Entity\BookmarkCrawlerStatus;
 use BookmarkManager\ApiBundle\Entity\BookmarkType;
 use BookmarkManager\ApiBundle\Entity\Tag;
 use BookmarkManager\ApiBundle\Exception\BmAlreadyExistsException;
@@ -33,7 +34,7 @@ class BookmarkUtils
      *
      * @param $controller
      * @param $data
-     * @return Tag
+     * @return Bookmark
      * @throws BmAlreadyExistsException
      * @throws BmErrorResponseException
      */
@@ -72,9 +73,11 @@ class BookmarkUtils
             }
 
             $bookmarkEntity->setUrl($url);
+
             $bookmarkEntity = $crawler->crawlWebsite($bookmarkEntity, $controller->getUser());
 
             if ($bookmarkEntity === null) {
+                // TODO: throw exception
                 return null;
             }
 
@@ -178,16 +181,16 @@ class BookmarkUtils
     {
         $html = $bookmark->getContent();
         if (!strlen($html)) {
-            return 1;
+            return Bookmark::DEFAULT_READING_TIME;
         }
 
 
         if ($bookmark->getType() === BookmarkType::SLIDE) {
             // count number of slides
             $crawler = new Crawler($html);
-            $nbSlides = count($crawler->filter('img.slide_image'));
+            $nbSlides = count($crawler->filter(Bookmark::SLIDE_IMAGE_CLASS));
 
-            // For now: 1 minute per slide
+            // For now: 2 minute per slide
             return $nbSlides * 2;
         } else {
             // count words (do not take care of html tag).
@@ -199,9 +202,6 @@ class BookmarkUtils
             if ($min == 0) {
                 return 1;
             }
-
-            // TODO: Handle slide type reading type
-
 
             // TODO: Handle video ? -> Perhaps move the reading time to the crawler and save it in db.
 

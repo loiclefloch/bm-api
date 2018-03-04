@@ -8,6 +8,7 @@ use BookmarkManager\ApiBundle\Crawler\Plugin\MediumCrawlerPlugin;
 use BookmarkManager\ApiBundle\Crawler\Plugin\SlideshareCrawlerPlugin;
 use BookmarkManager\ApiBundle\Crawler\Plugin\YouTubeCrawlerPlugin;
 use BookmarkManager\ApiBundle\Entity\Bookmark;
+use BookmarkManager\ApiBundle\Entity\BookmarkCrawlerStatus;
 use BookmarkManager\ApiBundle\Entity\BookmarkType;
 use BookmarkManager\ApiBundle\Entity\User;
 use BookmarkManager\ApiBundle\Utils\BookmarkUtils;
@@ -24,8 +25,9 @@ class WebsiteCrawler
      * Number of occurrences find for a tag name on the bookmark text content to propose to set the tag.
      * This value is completely arbitrary.
      * TODO: Run tests to find an appreciable value.
+     * TODO: should be occurence percent per size of text
      */
-    const NB_OCCURRENCES_TO_SET_TAG = 3;
+    const NB_OCCURRENCES_TO_SET_TAG = 10;
 
     /**
      * @param Bookmark $bookmark
@@ -36,7 +38,17 @@ class WebsiteCrawler
     {
         $bookmark->setUrl($this->cleanUrl($bookmark->getUrl()));
 
-        $html = $this->get_data($bookmark->getUrl());
+        $html = null;
+        try {
+            $html = $this->get_data($bookmark->getUrl());
+        } catch (CrawlerNotFoundException $e) {
+            echo $e->getTraceAsString();
+//                $this->getLogger()->info('[IMPORT] 404 for '.$data['url']);
+            $bookmark->setCrawlerStatus(BookmarkCrawlerStatus::NO_RETRIEVE);
+        } catch (CrawlerRetrieveDataException $e) {
+//                $this->getLogger()->info('[IMPORT] Impossible to retrieve the website content for '.$data['url']);
+            $bookmark->setCrawlerStatus(BookmarkCrawlerStatus::NO_RETRIEVE);
+        }
 
         return $this->crawlWebsiteWithHtml($bookmark, $html, $user);
     }
@@ -92,8 +104,6 @@ class WebsiteCrawler
                 $metaProperties[$name] = $content;
             }
 
-//            var_dump($metaNames);
-//            var_dump($metaProperties);
 
             // All the information that we want to retrieve. Og information is handle with #handleOg
             $websiteInfo = [
@@ -104,10 +114,14 @@ class WebsiteCrawler
             // -- Retrieve website's information
 
             $websiteInfo['authorAvatar'] = ''; // have to be found on crawler plugins. See MediumCrawlerPlugin for example.
-            $websiteInfo['author'] = trim($this->array_get_key([ 'article:author', 'author', 'og:author' ], $metaProperties));
-            $websiteInfo['title'] = trim($this->array_get_key([ 'article:title',  'title', 'og:title' ], $metaProperties));
+            $websiteInfo['author'] = trim(
+                $this->array_get_key(['article:author', 'author', 'og:author'], $metaProperties)
+            );
+            $websiteInfo['title'] = trim($this->array_get_key(['article:title', 'title', 'og:title'], $metaProperties));
             $websiteInfo['keywords'] = trim($this->array_get_key('keywords', $metaProperties));
-            $websiteInfo['description'] = trim($this->array_get_key([ 'description', 'og:description' ], $metaProperties));
+            $websiteInfo['description'] = trim(
+                $this->array_get_key(['description', 'og:description'], $metaProperties)
+            );
 
             // add properties
             $websiteInfo['meta'] = $metaProperties;
@@ -175,6 +189,16 @@ class WebsiteCrawler
             $bookmark->setDescription($description);
 
             $bookmark->setWebsiteInfo($websiteInfo);
+        } else {
+            // no html found
+            // add websiteInfo default values
+            $bookmark->setWebsiteInfo(
+                [
+                    'author' => null,
+                    'keywords' => null,
+                ]
+            );
+            // note: do not setCrawlerStatus here, since we do it after the crawler plugins are used
         }
 
         // -----------------
@@ -191,7 +215,7 @@ class WebsiteCrawler
             new GithubCrawlerPlugin(),
             new SlideshareCrawlerPlugin(),
             new YouTubeCrawlerPlugin(),
-            new MediumCrawlerPlugin()
+            new MediumCrawlerPlugin(),
         ];
 
         foreach ($crawlerPlugins as $plugin) {
@@ -206,11 +230,17 @@ class WebsiteCrawler
             $success = $readability->init();
 
             if ($success) {
+                $bookmark->setCrawlerStatus(BookmarkCrawlerStatus::RETRIEVED);
                 $bookmark->setContent($readability->getContent()->innerHTML);
             } else {
                 // no content where found.
+                $bookmark->setCrawlerStatus(BookmarkCrawlerStatus::CONTENT_BUG);
             }
-
+        } else {
+            // plugin was used, we set the crawler status if the plugin didn't do it
+            if ($bookmark->getCrawlerStatus() != null) {
+                $bookmark->setCrawlerStatus(BookmarkCrawlerStatus::RETRIEVED);
+            }
         }
 
         // -- automatic tags
@@ -219,22 +249,29 @@ class WebsiteCrawler
             $bookmark->addTags($tagsFound);
         }
 
-        // -- handle links on the content
-        $bookmark->setContent($this->handleLinks($bookmark->getContent(), $bookmark->getUrl()));
+        if ($bookmark->getCrawlerStatus() == BookmarkCrawlerStatus::CONTENT_BUG) {
+            $bookmark->setCrawlerStatus(BookmarkCrawlerStatus::CONTENT_BUG);
+        }
 
-        // TODO: replace img links by data:image/ ? Cf CrawlerUtils::picturesToBase64
+        if ($bookmark->getCrawlerStatus() == BookmarkCrawlerStatus::RETRIEVED) {
 
-        // TODO: remove scripts and css from content
+            // -- handle links on the content
+            $bookmark->setContent($this->handleLinks($bookmark->getContent(), $bookmark->getUrl()));
 
-        // TODO: remove inline styles
+            // TODO: replace img links by data:image/ ? Cf CrawlerUtils::picturesToBase64
 
-        $bookmark->setContent($this->handleAnchors($bookmark->getContent()));
+            // TODO: remove scripts and css from content
+
+            // TODO: remove inline styles
+
+            $bookmark->setContent($this->handleAnchors($bookmark->getContent()));
 
 //        $bookmark->setRead(false);
 
-        // Set readingTime if the crawler have not.
-        if ($bookmark->getReadingTime() === $bookmark::DEFAULT_READING_TIME) {
-            $bookmark->setReadingTime(BookmarkUtils::getReadingTime($bookmark));
+            // Set readingTime if the crawler have not.
+            if ($bookmark->getReadingTime() === $bookmark::DEFAULT_READING_TIME) {
+                $bookmark->setReadingTime(BookmarkUtils::getReadingTime($bookmark));
+            }
         }
 
         return $bookmark;
@@ -485,7 +522,7 @@ class WebsiteCrawler
      */
     protected function array_get_key($keys, $array, $default = null)
     {
-        $keys = is_array($keys) ? $keys : [ $keys ];
+        $keys = is_array($keys) ? $keys : [$keys];
         foreach ($keys as $key) {
             if (isset($array[strtolower($key)])) {
                 $value = $array[strtolower($key)];
@@ -516,7 +553,7 @@ class WebsiteCrawler
 
         // -- Images
         $crawler->filter('img')->each(
-            function ($imgCrawler) use ($url) {
+            function (Crawler $imgCrawler) use ($url) {
 
                 $currentSrc = $imgCrawler->getNode(0)->getAttribute('src');
                 $newSrc = $this->getRealImgLink($currentSrc, $url);
@@ -530,7 +567,7 @@ class WebsiteCrawler
 
         // -- Links
         $crawler->filter('a')->each(
-            function ($linkCrawler) use ($url) {
+            function (Crawler $linkCrawler) use ($url) {
 
                 $currentSrc = $linkCrawler->getNode(0)->getAttribute('href');
 
@@ -632,7 +669,7 @@ class WebsiteCrawler
         $crawler = new Crawler($content);
 
         $crawler->filter('h1, h2, h3, h4, h5')->each(
-            function ($titleNode) {
+            function (Crawler $titleNode) {
 
                 $currentId = $titleNode->getNode(0)->getAttribute('id');
                 $title = $titleNode->getNode(0)->nodeValue;
@@ -654,7 +691,7 @@ class WebsiteCrawler
 
         return $content;
     }
-    
+
     public function findTagsOnText(Array $tags, $text)
     {
         // Contains the tag and the number of occurrences
@@ -662,18 +699,23 @@ class WebsiteCrawler
 
         // -- remove html. Keep only the text.
         $crawler = new Crawler($text);
-        $text = $crawler->text();
+        try {
+            $text = $crawler->text();
 
-        foreach ($tags as $tag) {
-            $nbOccurrences = $this->findNumberOfOccurrencesOfStringOnText($tag->getName(), $text);
+            foreach ($tags as $tag) {
+                $nbOccurrences = $this->findNumberOfOccurrencesOfStringOnText($tag->getName(), $text);
 
-            if ($nbOccurrences >= WebsiteCrawler::NB_OCCURRENCES_TO_SET_TAG) {
-                $tagsInfo[] = [
-                    'tag' => $tag,
-                    'nbOccurrences' => $nbOccurrences,
-                ];
+                if ($nbOccurrences >= WebsiteCrawler::NB_OCCURRENCES_TO_SET_TAG) {
+                    $tagsInfo[] = [
+                        'tag' => $tag,
+                        'nbOccurrences' => $nbOccurrences,
+                    ];
+                }
+
             }
-
+        } catch (\InvalidArgumentException $e) {
+            // the $text is empty or invalid
+            return false;
         }
 
         $found = [];
@@ -698,7 +740,6 @@ class WebsiteCrawler
 
     public function findNumberOfOccurrencesOfStringOnText($toFind, $text)
     {
-
         // disable case-sensitive
         $toFind = strtolower($toFind);
         $text = strtolower($text);
