@@ -63,7 +63,7 @@ abstract class BookmarkCrawlerStatus
  * Bookmark
  * @ORM\HasLifecycleCallbacks
  * @ORM\Table()
- * @ORM\Entity
+ * @ORM\Entity(repositoryClass="BookmarkManager\ApiBundle\Repository\BookmarkRepository")
  *
  * @ExclusionPolicy("ALL")
  */
@@ -756,4 +756,24 @@ class Bookmark
         $this->crawlerStatus = $crawlerStatus;
     }
 
+
+    /**
+     * Get read
+     *
+     * @return boolean 
+     */
+    public function getRead()
+    {
+        return $this->read;
+    }
+
+    /**
+     * Remove books
+     *
+     * @param \BookmarkManager\ApiBundle\Entity\Book $books
+     */
+    public function removeBook(\BookmarkManager\ApiBundle\Entity\Book $books)
+    {
+        $this->books->removeElement($books);
+    }
 }

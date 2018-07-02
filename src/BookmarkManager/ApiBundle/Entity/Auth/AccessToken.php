@@ -29,4 +29,3 @@ class AccessToken extends BaseAccessToken
      */
     protected $user;
 }
-

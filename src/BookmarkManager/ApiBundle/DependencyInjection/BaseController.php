@@ -84,7 +84,7 @@ class BaseController extends FOSRestController
                 } else {
                     $url = $this->generateUrl(
                         (!empty($paging['route']) ? $paging['route'] : $this->getRequest()->attributes->get('_route')),
-                        array(),
+                        isset($paging['routeParams']) ? $paging['routeParams'] : array(),
                         true
                     );
                 }
@@ -158,6 +158,22 @@ class BaseController extends FOSRestController
                 'message' => $message,
             ],
             $httpCode
+        );
+    }
+
+     /**
+      * BmErrorResponseException | BMAlreadyExistsException
+     */
+    protected function errorResponseWithException($e)
+    {
+
+        return $this->buildResponse(
+            [
+                'code' => $e->getErrorCode(),
+                'message' => $e->getErrorMessage(),
+                'detail' => $e->getErrorDetail()
+            ],
+            $e->getHttpCode()
         );
     }
 

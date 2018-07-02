@@ -69,7 +69,9 @@ class BookmarkUtils
             );
 
             if ($exists) {
-                throw new BmAlreadyExistsException();
+                throw new BmAlreadyExistsException(BmAlreadyExistsException::DEFAULT_CODE, [
+                    'id' => $exists->getId()
+                ]);
             }
 
             $bookmarkEntity->setUrl($url);

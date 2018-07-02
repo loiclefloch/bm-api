@@ -20,7 +20,7 @@ use FOS\RestBundle\Controller\Annotations as Rest;
 /**
  * Circle controller.
  *
- * @Route("/circle")
+ * @Route("/circles")
  */
 class CircleController extends BaseController {
 
@@ -49,6 +49,30 @@ class CircleController extends BaseController {
             ],
             Response::HTTP_OK,
             Circle::GROUP_MULTIPLE
+        );
+    }
+
+    /**
+     * Lists all Circle entities for the current user.
+     *
+     * @Rest\Get("/users/me/circles/mine")
+     *
+     * @ApiDoc(
+     *     description="Get the user's default circle",
+     *     statusCodes={
+     *     }
+     * )
+     *
+     */
+    public function getMeCirclesMineAction()
+    {
+        $user = $this->getUser();
+        $userDefaultCircle = $this->getRepository(Circle::REPOSITORY_NAME)->find($user->getDefaultCircleId());
+
+        return $this->successResponse(
+            $userDefaultCircle,
+            Response::HTTP_OK,
+            Circle::GROUP_SINGLE
         );
     }
 
@@ -159,6 +183,7 @@ class CircleController extends BaseController {
                 return $this->errorResponse(101, "Circle already exists");
             }
 
+            $circleEntity->setOwner($this->getUser());
             $circleEntity->addAdmin($this->getUser());
 
             $this->persistEntity($circleEntity);
@@ -272,6 +297,9 @@ class CircleController extends BaseController {
             ]
         );
 
+        // TODO: do not allow adding members to solo circle 
+        // TODO: do not allow to remove owner from admins
+
         $editForm = $this->bindFormForPut($request, $editForm);
 
         if ($editForm->isValid()) {
@@ -337,16 +365,10 @@ class CircleController extends BaseController {
      * @Security("has_role('ROLE_ADMIN')")
      *
      * @ApiDoc(
-     *  description="Add member to circle",
+     *  description="Add users to circle's members",
      *  requirements={
      *      {
      *          "name"="circleId",
-     *          "dataType"="integer",
-     *          "requirement"="[\d]+",
-     *          "description"="User id"
-     *      },
-     *     {
-     *          "name"="userId",
      *          "dataType"="integer",
      *          "requirement"="[\d]+",
      *          "description"="User id"
@@ -370,27 +392,45 @@ class CircleController extends BaseController {
      * @param $userId
      * @return Response
      */
-    public function postCircleMemberAction(Request $request, $circleId, $userId)
+    public function postCircleMemberAction(Request $request, $circleId)
     {
-
         if (!is_numeric($circleId)) {
             return $this->errorResponse(101, "The id must be numeric", Response::HTTP_BAD_REQUEST);
         }
 
-        if (!is_numeric($userId)) {
-            return $this->errorResponse(102, "The id must be numeric", Response::HTTP_BAD_REQUEST);
-        }
+        //
+        // {
+        //     members: [
+        //         {
+        //             id: 1,
+        //             later: role ?
+        //         }
+        //     ]
+        // }
+        // 
+        $data = $request->request->all();
 
+        // verify data
         $circleEntity = $this->getRepository(Circle::REPOSITORY_NAME)->findOneById($circleId);
-        $userEntity = $this->getRepository(User::REPOSITORY_NAME)->findOneById($userId);
 
-        if (!$circleEntity || !$userEntity) {
+        if (!$circleEntity) {
             return $this->notFoundResponse();
         }
 
-        if (!$circleEntity->haveMember($userEntity)) {
-            $circleEntity->addMember($userEntity);
-            $this->persistEntity($circleEntity);
+        foreach ($data['members'] as $user) {
+            if (!is_numeric($user['id'])) {
+                return $this->errorResponse(102, "The id must be numeric", Response::HTTP_BAD_REQUEST);
+            }
+        }
+
+        foreach ($data['members'] as $user) {
+            $userEntity = $this->getRepository(User::REPOSITORY_NAME)->findOneById($user['id']);
+            if ($userEntity) {
+                if (!$circleEntity->haveMember($userEntity)) {
+                    $circleEntity->addMember($userEntity);
+                    $this->persistEntity($circleEntity);
+                }
+            }
         }
 
         return $this->successResponse($circleEntity);

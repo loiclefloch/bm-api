@@ -5,6 +5,7 @@ namespace BookmarkManager\ApiBundle\Controller;
 use BookmarkManager\ApiBundle\Annotation\ApiErrors;
 use BookmarkManager\ApiBundle\DependencyInjection\BaseController;
 use BookmarkManager\ApiBundle\Entity\User;
+use BookmarkManager\ApiBundle\Entity\Circle;
 use Nelmio\ApiDocBundle\Annotation\ApiDoc;
 use BookmarkManager\ApiBundle\Form\BookType;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Security;
@@ -20,9 +21,9 @@ use FOS\RestBundle\Controller\Annotations as Rest;
 /**
  * Book controller.
  *
- * @Route("/book")
+ * @Route("/circles/{circleId}/books")
  */
-class BookController extends BaseController {
+class BooksController extends BaseController {
 
     /**
      * Lists all Book entities.
@@ -34,13 +35,11 @@ class BookController extends BaseController {
      * )
      *
      */
-    public function getBooksAction()
+    public function getBooksAction($circle)
     {
-        $user = $this->getUser();
-
         $books = $this->getRepository(Book::REPOSITORY_NAME)->findBy(
           [
-              'owner' => $user
+              'owner' => $circle
           ]
         );
 
@@ -56,26 +55,9 @@ class BookController extends BaseController {
     }
 
     /**
-     * Lists all Book entities for the current user.
+     * Lists all Book entities for the given circle.
      *
-     * @Rest\Get("/users/me/books")
-     *
-     * @ApiDoc(
-     *     description="Get all the books",
-     *     statusCodes={
-     *     }
-     * )
-     *
-     */
-    public function getMeBooksAction()
-    {
-        return $this->getUserBooksAction($this->getUser()->getId());
-    }
-
-    /**
-     * Lists all Book entities for the given user.
-     *
-     * @Rest\Get("/users/{userId}/books")
+     * @Rest\Get("/")
      *
      * @ApiDoc(
      *     description="Get all the books",
@@ -85,26 +67,26 @@ class BookController extends BaseController {
      * )
      *  @ApiErrors({
      *      { 404, "User not found." },
-     *      { 101, "Invalid {userId}" }
+     *      { 101, "Invalid {circleId}" }
      * })
      *
-     * @param $userId
+     * @param $circleId
      * @return Response
      */
-    public function getUserBooksAction($userId)
+    public function getCircleBooksAction($circleId)
     {
-        if (!is_numeric($userId)) {
-            return $this->errorResponse(101, 'invalid user id');
+        if (!is_numeric($circleId)) {
+            return $this->errorResponse(101, 'invalid circle id');
         }
 
-        $user = $this->getRepository(User::REPOSITORY_NAME)->find($userId);
+        $circle = $this->getRepository(Circle::REPOSITORY_NAME)->find($circleId);
 
-        if (!$user) {
+        if (!$circle) {
             return $this->notFoundResponse();
         }
 
         return $this->successResponse(
-            ['books' => $user->getBooks()],
+            ['books' => $circle->getBooks()],
             Response::HTTP_OK,
             Book::GROUP_MULTIPLE
         );
@@ -134,12 +116,22 @@ class BookController extends BaseController {
      * @param Request $request
      * @return Response
      */
-    public function postBookAction(Request $request)
+    public function postBookAction(Request $request, $circleId)
     {
         $data = $request->request->all();
         $bookEntity = new Book();
 
         $user = $this->getUser();
+
+        if (!is_numeric($circleId)) {
+            return $this->errorResponse(101, 'invalid circle id');
+        }
+
+        $circle = $this->getRepository(Circle::REPOSITORY_NAME)->find($circleId);
+
+        if (!$circle) {
+            return $this->notFoundResponse();
+        }
 
         $form = $this->createForm(
             new BookType(),
@@ -162,11 +154,11 @@ class BookController extends BaseController {
                 return $this->errorResponse(101, "Book already exists");
             }
 
-            $bookEntity->setOwner($user);
+            $bookEntity->setOwner($circle);
             $this->persistEntity($bookEntity);
 
-            $user->addBook($bookEntity);
-            $this->persistEntity($user);
+            $circle->addBook($bookEntity);
+            $this->persistEntity($circle);
 
             return $this->successResponse(
                 $bookEntity,
@@ -211,13 +203,13 @@ class BookController extends BaseController {
      * @return object|Response
      *
      */
-    public function getBookAction($id)
+    public function getBookAction($circleId, $bookId)
     {
-        if (!is_numeric($id)) {
+        if (!is_numeric($bookId)) {
             return $this->errorResponse(101, "The id must be numeric", Response::HTTP_BAD_REQUEST);
         }
 
-        $bookEntity = $this->getRepository(Book::REPOSITORY_NAME)->find($id);
+        $bookEntity = $this->getRepository(Book::REPOSITORY_NAME)->find($bookId);
 
         if (!$bookEntity) {
             return $this->notFoundResponse();
@@ -253,15 +245,15 @@ class BookController extends BaseController {
      * @param $id
      * @return Response
      */
-    public function putBookAction(Request $request, $id)
+    public function putBookAction(Request $request, $circleId, $bookId)
     {
         $data = $request->request->all();
 
-        if (!is_numeric($id)) {
+        if (!is_numeric($bookId)) {
             return $this->errorResponse(101, "The id must be numeric", Response::HTTP_BAD_REQUEST);
         }
 
-        $bookEntity = $this->getRepository(Book::REPOSITORY_NAME)->find($id);
+        $bookEntity = $this->getRepository(Book::REPOSITORY_NAME)->find($bookId);
 
         if (!$bookEntity) {
             return $this->notFoundResponse();
@@ -316,7 +308,7 @@ class BookController extends BaseController {
      * @param $id
      * @return Response
      */
-    public function deleteBookAction(Request $request, $id)
+    public function deleteBookAction(Request $request, $circleId, $bookId)
     {
         if (!is_numeric($id)) {
             return $this->errorResponse(101, "The id must be numeric", Response::HTTP_BAD_REQUEST);
@@ -332,13 +324,12 @@ class BookController extends BaseController {
             return $this->notFoundResponse();
         }
 
+        // TODO: do not allow to remove if in a circle that is not user circle
+        // if in a circle, only owner can delete it (TODO: v2)
+
         $this->removeEntity($bookEntity);
 
         return $this->successResponse([], Response::HTTP_NO_CONTENT);
     }
-
-    // ---------------------------------------------------------------------------------------------------------------
-    //    /books/{id}/bookmarks
-    // ---------------------------------------------------------------------------------------------------------------
 
 }

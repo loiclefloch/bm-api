@@ -4,12 +4,17 @@ namespace BookmarkManager\ApiBundle\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
 
+use JMS\Serializer\Annotation\Groups;
+use JMS\Serializer\Annotation\Expose;
 use BookmarkManager\ApiBundle\Entity\User;
 use JMS\Serializer\Annotation as Serializer;
-use JMS\Serializer\Annotation\Groups;
 
 /**
  * Circle
+ * 
+ * There are two type of circles:
+ * - defaultCircle: can be linked to only one user. It is its default circle.
+ * - not defaultCircle: can be shared with other users.
  *
  * TODO:
  * - private / public
@@ -36,9 +41,12 @@ class Circle
      * @Groups({
      *     Circle::GROUP_MULTIPLE,
      *     Circle::GROUP_SINGLE,
-     *     User::GROUP_SIMPLE,
-     *     User::GROUP_ME
-     *      })
+     *     User::GROUP_SINGLE,
+     *     User::GROUP_ME,
+     *     User::GROUP_MULTIPLE,
+     *     BOOK::GROUP_MULTIPLE,
+     *     BOOK::GROUP_SINGLE
+     * })
      */
     private $id;
 
@@ -48,8 +56,12 @@ class Circle
      * @ORM\Column(name="name", type="string", length=50, unique=true)
      * @Groups({
      *     Circle::GROUP_MULTIPLE,
-     *     Circle::GROUP_SINGLE
-     *     })
+     *     Circle::GROUP_SINGLE,
+     *     BOOK::GROUP_MULTIPLE,
+     *     BOOK::GROUP_SINGLE,
+     *     User::GROUP_SINGLE,
+     *     User::GROUP_MULTIPLE
+     * })
      */
     private $name;
 
@@ -65,8 +77,26 @@ class Circle
     private $description;
 
     /**
+     * @var [Circle] circles
+     *
+     * Any user must have a default circle. Set to true if it is the default circle of someone (see $owner)
+     *
+     * @ORM\Column(name="is_default_circle", type="boolean", options={"default": false})
+     *
+     * @Expose
+     * @Groups({
+     *     Circle::GROUP_MULTIPLE,
+     *     Circle::GROUP_SINGLE,
+     *     User::GROUP_ME
+     *  })
+     */
+    protected $isDefaulCircle = false;
+
+    /**
      * @var array
      *
+     * List of User who subscribed to the circle (including admins)
+     * 
      * @ORM\ManyToMany(targetEntity="User", inversedBy="circles")
      * @Groups({
      *     Circle::GROUP_MULTIPLE,
@@ -75,9 +105,11 @@ class Circle
      */
     private $members;
 
-
     /**
      * @var array
+     * 
+     * List of User who aministrate the circle.
+     * They must be members too
      *
      * @ORM\ManyToMany(targetEntity="User", inversedBy="circlesAdmin")
      * @ORM\JoinTable(name="circleadmins")
@@ -87,6 +119,30 @@ class Circle
      *     })
      */
     private $admins;
+    
+     /**
+     * @var [User]
+     *
+     * @ORM\ManyToOne(targetEntity="User", inversedBy="circles")
+     *
+     * @Expose
+     * @Groups({
+     *     Circle::GROUP_MULTIPLE,
+     *     Circle::GROUP_SINGLE
+     *  })
+     */
+    protected $owner;
+
+     /**
+     * @var [Book] books
+     * @ORM\OneToMany(targetEntity="Book", mappedBy="owner")
+     * @Expose
+     * @Groups({
+     *     Circle::GROUP_MULTIPLE,
+     *     Circle::GROUP_SINGLE
+     *  })
+     */
+    private $books;
 
     /**
      * Constructor
@@ -237,4 +293,91 @@ class Circle
     }
 
 
+    /**
+     * @return mixed
+     */
+    public function isDefaultCircle()
+    {
+        return $this->isDefaultCircle;
+    }
+
+    /**
+     * @param mixed $isDefaultCircle
+     */
+    public function setIsDefaultBook($isDefaultCircle)
+    {
+        $this->isDefaultCircle = $isDefaultCircle;
+    }
+
+
+    /**
+     * @return mixed
+     */
+    public function getBooks()
+    {
+        return $this->books;
+    }
+
+    public function addBook(Book $book)
+    {
+        if (!$this->haveBook($book)) {
+            $this->books[] = $book;
+        }
+
+        return $this;
+    }
+
+    public function haveBook(Book $book)
+    {
+        return $this->books->indexOf($book) !== false;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getOwner()
+    {
+        return $this->owner;
+    }
+
+    /**
+     * @param mixed $owner
+     */
+    public function setOwner($owner)
+    {
+        $this->owner = $owner;
+    }
+
+    /**
+     * Set isDefaulCircle
+     *
+     * @param boolean $isDefaulCircle
+     * @return Circle
+     */
+    public function setIsDefaultCircle($isDefaulCircle)
+    {
+        $this->isDefaulCircle = $isDefaulCircle;
+
+        return $this;
+    }
+
+    /**
+     * Get isDefaulCircle
+     *
+     * @return boolean 
+     */
+    public function getIsDefaulCircle()
+    {
+        return $this->isDefaulCircle;
+    }
+
+    /**
+     * Remove books
+     *
+     * @param \BookmarkManager\ApiBundle\Entity\Book $books
+     */
+    public function removeBook(\BookmarkManager\ApiBundle\Entity\Book $books)
+    {
+        $this->books->removeElement($books);
+    }
 }

@@ -23,7 +23,7 @@ use BookmarkManager\ApiBundle\Entity\Tag;
 /**
  * @ORM\Entity
  * @ORM\HasLifecycleCallbacks
- * @ORM\Table(name="sw_user")
+ * @ORM\Table(name="sw_user") // TODO: bm_user
  * @ExclusionPolicy("ALL")
  *
  * @UniqueEntity(fields="emailCanonical", message="fos_user.email.already_used")
@@ -34,7 +34,7 @@ class User extends BaseUser
     const REPOSITORY_NAME = 'User';
 
     const GROUP_MULTIPLE = "users";
-    const GROUP_SIMPLE = "user";
+    const GROUP_SINGLE = "user";
     const GROUP_ME = "me";
 
     /**
@@ -45,7 +45,7 @@ class User extends BaseUser
      *
      * @Groups({
      *     User::GROUP_MULTIPLE,
-     *     User::GROUP_SIMPLE,
+     *     User::GROUP_SINGLE,
      *     User::GROUP_ME,
      *     Circle::GROUP_MULTIPLE,
      *     Circle::GROUP_SINGLE
@@ -84,7 +84,7 @@ class User extends BaseUser
      * @Expose
      * @Groups({
      *     User::GROUP_MULTIPLE,
-     *     User::GROUP_SIMPLE,
+     *     User::GROUP_SINGLE,
      *     User::GROUP_ME,
      *     Circle::GROUP_MULTIPLE
      *     })
@@ -98,7 +98,7 @@ class User extends BaseUser
      * @Expose
      * @Groups({
      *     User::GROUP_MULTIPLE,
-     *     User::GROUP_SIMPLE,
+     *     User::GROUP_SINGLE,
      *     User::GROUP_ME,
      *     Circle::GROUP_MULTIPLE
      *     })
@@ -131,10 +131,9 @@ class User extends BaseUser
      * @Expose
      * @Groups({
      *     User::GROUP_MULTIPLE,
-     *     User::GROUP_SIMPLE,
+     *     User::GROUP_SINGLE,
      *     User::GROUP_ME,
-     *     Circle::GROUP_MULTIPLE
-     *     })
+     * })
      */
     protected $circles;
 
@@ -149,42 +148,24 @@ class User extends BaseUser
      * @Expose
      * @Groups({
      *     User::GROUP_MULTIPLE,
-     *     User::GROUP_SIMPLE,
+     *     User::GROUP_SINGLE,
      *     User::GROUP_ME,
      *     Circle::GROUP_MULTIPLE
      *     })
      */
     protected $circlesAdmin;
 
-    /**
-     * @var [Book] books
-     *
-     * Disable direct Expose due to serialization bug (serialize as object instead of array)
-     * The service to get the user's owned circles is /circles
-     *
-     * @ORM\OneToMany(targetEntity="Book", mappedBy="owner")
-     *
-     * @Expose
-     * @Groups({
-     *     User::GROUP_MULTIPLE,
-     *     User::GROUP_SIMPLE,
-     *     User::GROUP_ME,
-     *     Circle::GROUP_MULTIPLE
-     *      })
-     */
-    protected $books;
-
     // ----------------------------------------------------------------------------------------------------------------
-    // default book id
+    // default circle id
 
     /**
-     * @ORM\Column(name="default_book_id", type="string", length=255, nullable=false)
+     * @ORM\Column(name="default_circle_id", type="string", length=255, nullable=false)
      *
      * @Expose
      * @Groups({ User::GROUP_ME })
      *
      */
-    public $defaultBookId = '';
+    public $defaultCircleId = '';
 
     // ----------------------------------------------------------------------------------------------------------------
     // LIFECYCLE
@@ -196,7 +177,6 @@ class User extends BaseUser
 
         $this->circles = new \Doctrine\Common\Collections\ArrayCollection();
         $this->circlesAdmin = new \Doctrine\Common\Collections\ArrayCollection();
-        $this->books = new \Doctrine\Common\Collections\ArrayCollection();
     }
 
     /**
@@ -221,7 +201,7 @@ class User extends BaseUser
     /**
      * @Accessor(getter="isActive")
      * @Expose
-     * @Groups({ User::GROUP_MULTIPLE, User::GROUP_SIMPLE, Circle::GROUP_MULTIPLE })
+     * @Groups({ User::GROUP_MULTIPLE, User::GROUP_SINGLE, Circle::GROUP_MULTIPLE })
      */
     public $isActive = false;
 
@@ -374,7 +354,7 @@ class User extends BaseUser
 
 
     /**
-     * Add bookmarks
+     * Add bookarks
      *
      * @param Bookmark $bookmark
      * @return User
@@ -514,57 +494,52 @@ class User extends BaseUser
     }
 
     /**
-     * Add book
-     *
-     * @param \BookmarkManager\ApiBundle\Entity\Book $book
-     * @return Book
+     * @return mixed
      */
-    public function addBook(Book $book)
+    public function getDefaultCircleId()
     {
-        if (!$this->haveBook($book)) {
-            $this->books[] = $book;
-        }
+        return $this->defaultCircleId;
+    }
+
+    /**
+     * @param mixed $defaultCircleId
+     */
+    public function setDefaultCircleId($defaultCircleId)
+    {
+        $this->defaultCircleId = $defaultCircleId;
+    }
+
+
+    /**
+     * Remove circles
+     *
+     * @param \BookmarkManager\ApiBundle\Entity\Circle $circles
+     */
+    public function removeCircle(\BookmarkManager\ApiBundle\Entity\Circle $circles)
+    {
+        $this->circles->removeElement($circles);
+    }
+
+    /**
+     * Add circlesAdmin
+     *
+     * @param \BookmarkManager\ApiBundle\Entity\Circle $circlesAdmin
+     * @return User
+     */
+    public function addCirclesAdmin(\BookmarkManager\ApiBundle\Entity\Circle $circlesAdmin)
+    {
+        $this->circlesAdmin[] = $circlesAdmin;
 
         return $this;
     }
 
-
-    public function haveBook(Book $book)
-    {
-        return $this->books->indexOf($book) !== false;
-    }
-
     /**
-     * @return mixed
+     * Remove circlesAdmin
+     *
+     * @param \BookmarkManager\ApiBundle\Entity\Circle $circlesAdmin
      */
-    public function getBooks()
+    public function removeCirclesAdmin(\BookmarkManager\ApiBundle\Entity\Circle $circlesAdmin)
     {
-        return $this->books;
+        $this->circlesAdmin->removeElement($circlesAdmin);
     }
-
-    /**
-     * @param mixed $books
-     */
-    public function setBooks($books)
-    {
-        $this->books = $books;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getDefaultBookId()
-    {
-        return $this->defaultBookId;
-    }
-
-    /**
-     * @param mixed $defaultBookId
-     */
-    public function setDefaultBookId($defaultBookId)
-    {
-        $this->defaultBookId = $defaultBookId;
-    }
-
 }
-

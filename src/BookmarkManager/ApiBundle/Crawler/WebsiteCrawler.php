@@ -238,7 +238,7 @@ class WebsiteCrawler
             }
         } else {
             // plugin was used, we set the crawler status if the plugin didn't do it
-            if ($bookmark->getCrawlerStatus() != null) {
+            if ($bookmark->getCrawlerStatus() == null) {
                 $bookmark->setCrawlerStatus(BookmarkCrawlerStatus::RETRIEVED);
             }
         }
@@ -247,10 +247,6 @@ class WebsiteCrawler
         if ($user != null) {
             $tagsFound = $this->findTagsOnText($user->getTags()->toArray(), $bookmark->getContent());
             $bookmark->addTags($tagsFound);
-        }
-
-        if ($bookmark->getCrawlerStatus() == BookmarkCrawlerStatus::CONTENT_BUG) {
-            $bookmark->setCrawlerStatus(BookmarkCrawlerStatus::CONTENT_BUG);
         }
 
         if ($bookmark->getCrawlerStatus() == BookmarkCrawlerStatus::RETRIEVED) {

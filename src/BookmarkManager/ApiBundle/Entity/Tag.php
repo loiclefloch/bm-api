@@ -32,7 +32,7 @@ class Tag
      * @ORM\GeneratedValue(strategy="AUTO")
      *
      * @Expose
-     * @Groups({ Tag::GROUP_MULTIPLE, TAG::GROUP_SINGLE, Bookmark::GROUP_SINGLE, BOOKMARK::GROUP_MULTIPLE, User::GROUP_SIMPLE })
+     * @Groups({ Tag::GROUP_MULTIPLE, TAG::GROUP_SINGLE, Bookmark::GROUP_SINGLE, BOOKMARK::GROUP_MULTIPLE, User::GROUP_SINGLE })
      */
     private $id;
 

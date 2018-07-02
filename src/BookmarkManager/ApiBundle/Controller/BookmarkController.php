@@ -9,6 +9,7 @@ use BookmarkManager\ApiBundle\Exception\BmAlreadyExistsException;
 use BookmarkManager\ApiBundle\Exception\BmErrorResponseException;
 use BookmarkManager\ApiBundle\Utils\BookmarkUtils;
 use BookmarkManager\ApiBundle\Utils\TagUtils;
+use BookmarkManager\ApiBundle\Repository\BookmarkRepository;
 use Exception;
 use FOS\RestBundle\Controller\Annotations\View;
 use FOS\RestBundle\Request\ParamFetcher;
@@ -18,6 +19,7 @@ use Nelmio\ApiDocBundle\Annotation\ApiDoc;
 use Symfony\Component\HttpFoundation\Request;
 use BookmarkManager\ApiBundle\DependencyInjection\BaseController;
 use BookmarkManager\ApiBundle\Entity\Bookmark;
+use BookmarkManager\ApiBundle\Entity\Book;
 use BookmarkManager\ApiBundle\Form\BookmarkFormType;
 use BookmarkManager\ApiBundle\Annotation\ApiErrors;
 use Symfony\Component\HttpFoundation\Response;
@@ -48,85 +50,26 @@ class BookmarkController extends BaseController
      */
     public function getBookmarksAction(ParamFetcher $params)
     {
-        $max_results_limit = $this->container->getParameter('max_results_limit');
-        $default_results_limit = $this->container->getParameter('default_results_limit');
-
         $params = $params->all();
 
-        $paging = array(
-            'page' => $params['page'],
-            'limit' => $params['limit'],
-            'sort_by' => array('updated_at' => 'DESC'),
-            'total' => 0,
-            'results' => 0,
-            'last_page' => 0,
+        $options = [
+            'parentType' => BookmarkRepository::PARENT_TYPE_USER,
+            'id' => $this->getUser()->getId(),
+            'max_results_limit' => $this->container->getParameter('max_results_limit'),
+            'default_results_limit' => $this->container->getParameter('default_results_limit'),
+        ];
+
+        $result = $this->getRepository(Bookmark::REPOSITORY_NAME)->findAllOrderedByName(
+            $params,
+            $options
         );
 
-        if (isset($paging['page']) && intval($paging['page']) < 1) {
-            $errors['page'][] = 'Page must be positive';
-        }
-
-        if (isset($paging['limit'])) {
-            if (intval($paging['limit']) < 1) {
-                $errors['limit'][] = 'Limit must be positive';
-            }
-            if (intval($paging['limit']) > $max_results_limit) {
-                $errors['limit'][] = 'Limit is too high. Max '.$max_results_limit;
-            }
-        }
-
-        if (!empty($errors)) {
-            return ($this->errorResponse(101, $errors, Response::HTTP_BAD_REQUEST));
-        }
-
-        if (!isset($paging['limit']) || $paging['limit'] < 1) {
-            $paging['limit'] = $default_results_limit;
-        }
-
-        if (!isset($paging['page']) || $paging['page'] < 1) {
-            $paging['page'] = 1;
-        }
-
-        $paging['offset'] = (($paging['page'] - 1) * $paging['limit']);
-
-        $builder = $this->getRepository(Bookmark::REPOSITORY_NAME)->createQueryBuilder('p');
-
-        // -- Select only the user's bookmarks
-        $builder
-            ->leftJoin('p.owner', 'u')
-            ->andWhere('u.id = :owner')
-            ->setParameter('owner', $this->getUser()->getId());
-
-        // -- Count total number of result.
-        $countQuery = clone($builder);
-        $countQuery = $countQuery->select('COUNT(p)')->getQuery();
-        $paging['total'] = intval($countQuery->getSingleScalarResult());
-
-        // -- Set limit to the query
-        $builder = $builder->setFirstResult($paging['offset'])
-            ->setMaxResults($paging['limit'])
-            ->orderBy('p.createdAt', 'DESC')
-            ->getQuery();
-
-        $data = $builder->getResult();
-
-        // -- Set paging
-        $paging['last_page'] = intval(ceil($paging['total'] / $paging['limit']));
-
-        // -- Set number of results
-        $paging['results'] = count($data);
-
-        if (!(($paging['page'] <= $paging['last_page'] && $paging['page'] >= 1)
-            || ($paging['total'] == 0 && $paging['page'] == 1))
-        ) {
-            return ($this->errorResponse(102, 'resource not found', Response::HTTP_BAD_REQUEST));
-        }
-
-        return $this->successResponse(array('bookmarks' => $data),
+        return $this->successResponse(array('bookmarks' => $result['bookmarks']),
                 Response::HTTP_OK,
                 [Bookmark::GROUP_MULTIPLE],
-                $paging
+                $result['paging']
         );
+    
     }
 
     /**
@@ -163,10 +106,12 @@ class BookmarkController extends BaseController
         try {
             $bookmarkEntity = BookmarkUtils::createBookmark($this, $data);
         } catch (BmAlreadyExistsException $e) {
-            return $this->errorResponse($e->getErrorCode(), $e->getMessage(), $e->getHttpCode());
+            return $this->errorResponseWithException($e);
         }
         catch (Exception $e) {
             $this->getLogger()->info('[IMPORT] Unknown error  for '.$data['url']);
+
+            print_r($e->getTraceAsString());
 
             return $this->errorResponse(104, 'Unknown error ' . $e, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
@@ -697,9 +642,53 @@ class BookmarkController extends BaseController
 //            var_dump($e->getTrace());
             $this->getLogger()->info('[IMPORT] Unknown error  for '.$data['url']);
 
+            print_r($e->getTraceAsString());
+
             return $this->errorResponse(104, 'Unknown error' . $e->getMessage(), Response::HTTP_BAD_REQUEST);
         }
 
         return $this->successResponse($bookmarkEntity, Response::HTTP_OK, Bookmark::GROUP_SINGLE);
+    }
+
+
+    // ---------------------------------------------------------------------------------------------------------------
+    //    /bookmarks/{bookmarkId}books
+    // ---------------------------------------------------------------------------------------------------------------
+
+    /**
+     * @Rest\Post("/bookmarks/{bookmarkId}/books")
+     * 
+     * Allows to add a bookmark to multiple books
+     */
+    public function postBooksAction(Request $request, $bookmarkId) {
+        if (!is_numeric($bookmarkId)) {
+            return $this->errorResponse(101, "The id must be numeric", Response::HTTP_BAD_REQUEST);
+        }
+
+        $bookmark = $this->getRepository(Bookmark::REPOSITORY_NAME)->find($bookmarkId);
+        if (!$bookmark) {
+            return $this->notFoundResponse();
+        }
+
+        $data = $request->request->all();
+
+        $booksData = $data['books'];
+
+        foreach ($booksData as $bookData) {
+            $book = $this->getRepository(Book::REPOSITORY_NAME)->find($bookData['id']);
+
+            if ($book !== null) {
+                $book->addBookmark($bookmark);
+                $bookmark->addBook($book);
+                $this->persistentity($book);
+                $this->persistentity($bookmark);
+            }
+        }
+
+        return $this->successResponse(
+            $booksData,
+            Response::HTTP_CREATED
+            // Book::GROUP_SINGLE
+        );
     }
 }

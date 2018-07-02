@@ -10,9 +10,11 @@ use JMS\Serializer\Annotation\Groups;
 
 
 /**
+ * A Book is a collection of bookmarks.
+ * A book is linked to a circle, and accessible by all the circle's members
+ * 
  * @ORM\Entity
  * @ExclusionPolicy("ALL")
- *
  */
 class Book
 {
@@ -31,8 +33,10 @@ class Book
      *     Book::GROUP_MULTIPLE,
      *     Book::GROUP_SINGLE,
      *     User::GROUP_ME,
-     *     User::GROUP_SIMPLE
-     *     })
+     *     User::GROUP_SINGLE,
+     *     Circle::GROUP_SINGLE,
+     *     Circle::GROUP_MULTIPLE,
+     * })
      */
     protected $id;
 
@@ -42,53 +46,50 @@ class Book
      * @Expose
      * @Groups({
      *     Book::GROUP_MULTIPLE,
-     *     Book::GROUP_SINGLE
-     *     })
+     *     Book::GROUP_SINGLE,
+     *     Circle::GROUP_SINGLE,
+     *     Circle::GROUP_MULTIPLE
+     * })
      */
     protected $name;
+
+    /**
+     * @var string
+     *
+     * @ORM\Column(name="description", type="string", length=255)
+     * 
+     * @Expose
+     * @Groups({
+     *     Book::GROUP_MULTIPLE,
+     *     Book::GROUP_SINGLE,
+     *     Circle::GROUP_MULTIPLE,
+     *     Circle::GROUP_SINGLE
+     * })
+     */
+    private $description;
 
     /**
      * @var [Bookmark] bookmarks
      *
      * @ORM\ManyToMany(targetEntity="Bookmark", mappedBy="books")
      *
-     * @Expose
-     * @Groups({
-     *     Book::GROUP_MULTIPLE,
-     *     Book::GROUP_SINGLE
-     *     })
      */
     protected $bookmarks;
 
     /**
-     * @var [User]
+     * @var [Circle]
      *
-     * @ORM\ManyToOne(targetEntity="User", inversedBy="books")
-     *
-     * @Expose
-     * @Groups({
-     *     Book::GROUP_MULTIPLE,
-     *     Book::GROUP_SINGLE
-     *  })
-     */
-    protected $owner;
-
-    /**
-     * @var [Circle] circles
-     *
-     * Any user must have a default book. Set to true if it is the default book of someone (see $owner)
-     *
-     * @ORM\Column(name="is_default_book", type="boolean")
+     * @ORM\ManyToOne(targetEntity="Circle", inversedBy="books")
      *
      * @Expose
      * @Groups({
      *     Book::GROUP_MULTIPLE,
      *     Book::GROUP_SINGLE,
-     *     User::GROUP_ME
+     *     Circle::GROUP_SINGLE,
+     *     Circle::GROUP_MULTIPLE
      *  })
      */
-    protected $isDefaultBook = false;
-
+    protected $owner;
 
     // ----------------------------------------------------------------------------------------------------------------
     // GETTERS & SETTERS
@@ -174,19 +175,35 @@ class Book
     }
 
     /**
-     * @return mixed
+     * @return string
      */
-    public function isDefaultBook()
+    public function getDescription()
     {
-        return $this->isDefaultBook;
+        return $this->description;
     }
 
     /**
-     * @param mixed $isDefaultBook
+     * @param string $description
      */
-    public function setIsDefaultBook($isDefaultBook)
+    public function setDescription($description)
     {
-        $this->isDefaultBook = $isDefaultBook;
+        $this->description = $description;
+    }
+    /**
+     * Constructor
+     */
+    public function __construct()
+    {
+        $this->bookmarks = new \Doctrine\Common\Collections\ArrayCollection();
     }
 
+    /**
+     * Remove bookmarks
+     *
+     * @param \BookmarkManager\ApiBundle\Entity\Bookmark $bookmarks
+     */
+    public function removeBookmark(\BookmarkManager\ApiBundle\Entity\Bookmark $bookmarks)
+    {
+        $this->bookmarks->removeElement($bookmarks);
+    }
 }

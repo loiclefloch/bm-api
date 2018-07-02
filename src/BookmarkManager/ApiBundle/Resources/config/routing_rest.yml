@@ -23,9 +23,15 @@ circle:
     type:           rest
     resource:       BookmarkManager\ApiBundle\Controller\CircleController
 
-book:
+books:
     type:           rest
-    resource:       BookmarkManager\ApiBundle\Controller\BookController
+    parent:         circle
+    resource:       BookmarkManager\ApiBundle\Controller\BooksController
+
+booksBookmarks:
+    type:           rest
+    parent:         books
+    resource:       BookmarkManager\ApiBundle\Controller\BookBookmarksController
 
 db_update_scripts:
     type:           rest

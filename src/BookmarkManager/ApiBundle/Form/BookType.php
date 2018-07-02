@@ -29,6 +29,19 @@ class BookType extends AbstractType
                             ),
                         ] : []),
                 ]
+            )
+            ->add(
+                'description',
+                'text',
+                [
+                    'required' => !$options['ignoreRequired'],
+                    'constraints' => (!$options['ignoreRequired'] ?
+                        [
+                            new Assert\NotBlank(
+                                array('message' => 'name is required')
+                            )
+                        ] : []),
+                ]
             );
     }
 

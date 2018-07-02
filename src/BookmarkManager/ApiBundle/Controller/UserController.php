@@ -14,6 +14,7 @@ use FOS\RestBundle\Controller\Annotations as Rest;
 use Nelmio\ApiDocBundle\Annotation\ApiDoc;
 
 use BookmarkManager\ApiBundle\Entity\User;
+use BookmarkManager\ApiBundle\Entity\Circle;
 use BookmarkManager\ApiBundle\Annotation\ApiErrors;
 use BookmarkManager\ApiBundle\DependencyInjection\BaseController;
 use BookmarkManager\ApiBundle\Form\UserRegistration;
@@ -83,7 +84,7 @@ class UserController extends BaseController
             return $this->notFoundResponse();
         }
 
-        return $this->successResponse($user, Response::HTTP_OK, User::GROUP_SIMPLE);
+        return $this->successResponse($user, Response::HTTP_OK, User::GROUP_SINGLE);
     }
 
     /**
@@ -96,7 +97,7 @@ class UserController extends BaseController
     public function getUsersAction()
     {
         // TODO
-        return $this->getRepository(User::REPOSITORY_NAME)->findAll();
+        return $this->successResponse($this->getRepository(User::REPOSITORY_NAME)->findAll(), Response::HTTP_OK, User::GROUP_MULTIPLE);
     }
 
     /**
@@ -169,18 +170,21 @@ class UserController extends BaseController
         }
 
         // -- create empty default book.
-        $book = new Book();
-        $book->setName($user->getUsername() . '\'s book');
-        $book->setOwner($user);
-        $book->setIsDefaultBook(true);
-        $this->persistEntity($book);
+        $circle = new Circle();
+        // name must be unique
+        $circle->setName($user->getUsername() . '\'s circle');
+        $circle->setDescription($user->getUsername() . '\'s circle');
+        $circle->setOwner($user);
+        $circle->setIsDefaultCircle(true);
+        
+        $this->persistEntity($circle);
 
 
-        $user->addBook($book);
-        $user->setDefaultBookId($book->getId());
+        $user->addCircle($circle);
+        $user->setDefaultCircleId($circle->getId());
         $this->persistEntity($user);
 
-        return $this->successResponse($user, Response::HTTP_CREATED, User::GROUP_SIMPLE);
+        return $this->successResponse($user, Response::HTTP_CREATED, User::GROUP_SINGLE);
     }
 
     /**
@@ -236,6 +240,6 @@ class UserController extends BaseController
 
         $userManager->updateUser($user, true);
 
-        return $this->successResponse($user, Response::HTTP_CREATED, User::GROUP_SIMPLE);
+        return $this->successResponse($user, Response::HTTP_CREATED, User::GROUP_SINGLE);
     }
 }
