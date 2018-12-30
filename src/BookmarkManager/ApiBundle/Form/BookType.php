@@ -39,7 +39,7 @@ class BookType extends AbstractType
                         [
                             new Assert\NotBlank(
                                 array('message' => 'name is required')
-                            )
+                            ),
                         ] : []),
                 ]
             );

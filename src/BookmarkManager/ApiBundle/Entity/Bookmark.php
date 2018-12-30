@@ -238,7 +238,6 @@ class Bookmark
      */
     private $previewPicture;
 
-
     /**
      * @var number
      *
@@ -760,7 +759,7 @@ class Bookmark
     /**
      * Get read
      *
-     * @return boolean 
+     * @return boolean
      */
     public function getRead()
     {

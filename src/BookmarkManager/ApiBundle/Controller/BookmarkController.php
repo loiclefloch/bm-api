@@ -104,7 +104,7 @@ class BookmarkController extends BaseController
         $data = $request->request->all();
 
         try {
-            $bookmarkEntity = BookmarkUtils::createBookmark($this, $data);
+            $bookmarkEntity = BookmarkUtils::createBookmark($this, $data, true);
         } catch (BmAlreadyExistsException $e) {
             return $this->errorResponseWithException($e);
         }
@@ -115,6 +115,8 @@ class BookmarkController extends BaseController
 
             return $this->errorResponse(104, 'Unknown error ' . $e, Response::HTTP_INTERNAL_SERVER_ERROR);
         }
+
+        $this->persistEntity($bookmarkEntity);
 
         return $this->successResponse(
             $bookmarkEntity,
@@ -251,6 +253,89 @@ class BookmarkController extends BaseController
     }
 
     /**
+     * Update an existing Bookmark entity.
+     *
+     * @Rest\Put("/bookmarks/{bookmarkId}/recrawl")
+     *
+     * @ApiDoc(
+     *  description="Update bookmark's content by crawling it",
+     *  requirements={
+     *      {
+     *          "name"="bookmarkId",
+     *          "dataType"="integer",
+     *          "requirement"="[\d]+",
+     *          "description"="Bookmark id"
+     *      }
+     *  },
+     *  statusCodes={
+     *      200="Returned when successful.",
+     *      404="Returned when the bookmark is not found.",
+     *      400="Returned when the parameter is invalid.",
+     *  }
+     * )
+     *
+     * @ApiErrors({
+     *      { 101, "The bookmark id must be numeric" },
+     * })
+     *
+     * @param Request $request
+     * @param $bookmarkId
+     * @return Response
+     */
+     public function recrawlBookmarkAction(Request $request, $bookmarkId)
+     {
+         $data = $request->request->all();
+ 
+         if (!is_numeric($bookmarkId)) {
+             return $this->errorResponse(101, "The id must be numeric", Response::HTTP_BAD_REQUEST);
+         }
+ 
+         $bookmarkEntity = $this->getRepository(Bookmark::REPOSITORY_NAME)->findOneBy(
+             [
+                 'id' => $bookmarkId,
+                 'owner' => $this->getUser(),
+             ]
+         );
+ 
+         if (!$bookmarkEntity) {
+             return $this->notFoundResponse();
+         }
+ 
+         try {
+            $data = [
+                'url' => $bookmarkEntity->getUrl(),
+            ];
+            $newBookmark = BookmarkUtils::createBookmark($this, $data, false);
+        } catch (BmAlreadyExistsException $e) {
+            return $this->errorResponseWithException($e);
+        } catch (Exception $e) {
+            $this->getLogger()->info('[IMPORT] Unknown error  for '.$bookmarkEntity->getUrl());
+
+            print_r($e->getTraceAsString());
+
+            return $this->errorResponse(104, 'Unknown error ' . $e, Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+ 
+        // update bookmark data 
+        $bookmarkEntity->setContent($newBookmark->getContent());
+        $bookmarkEntity->setReadingTime($newBookmark->getReadingTime());
+        $bookmarkEntity->setTitle($newBookmark->getTitle());
+        $bookmarkEntity->setDescription($newBookmark->getDescription());
+        $bookmarkEntity->setType($newBookmark->getType());
+        $bookmarkEntity->setPreviewPicture($newBookmark->getPreviewPicture());
+        $bookmarkEntity->setWebsiteInfo($newBookmark->getWebsiteInfo());
+        $bookmarkEntity->setCrawlerStatus($newBookmark->getCrawlerStatus());
+
+        $this->persistEntity($bookmarkEntity);
+
+        return $this->successResponse(
+            $bookmarkEntity,
+            Response::HTTP_OK,
+            Bookmark::GROUP_SINGLE
+        );
+     }
+
+    /**
      * Deletes a Bookmark entity.
      *
      * @ApiDoc(
@@ -380,25 +465,28 @@ class BookmarkController extends BaseController
         // for each tag, try to create it if does not exists.
         foreach ($tags as $tag) {
 
+            $tagId = null;
             if (is_numeric($tag)) {
                 $tagId = $tag;
             } elseif (isset($tag['id'])) {
                 $tagId = $tag['id'];
-            } else {
-                return $this->errorResponse(104, 'No tag id found', Response::HTTP_BAD_REQUEST);
             }
 
-            $tagEntity = $this->getRepository('Tag')->findOneBy(
-                [
-                    'id' => $tagId,
-                    'owner' => $this->getUser(),
-                ]
-            );
-
-            if (!$tagEntity) {
+            if (!is_null($tagId)) {
+                $tagEntity = $this->getRepository('Tag')->findOneBy(
+                    [
+                        'id' => $tagId,
+                        'owner' => $this->getUser(),
+                    ]
+                );
+            } else {
                 $tagEntity = TagUtils::createTag($this, $tag);
             }
 
+            if (!$tagEntity) {
+                return $this->errorResponse(104, 'No tag found for id ' . $tagId, Response::HTTP_BAD_REQUEST);
+            }
+            
             $bookmarkEntity->addTag($tagEntity);
         }
         $this->persistEntity($bookmarkEntity);

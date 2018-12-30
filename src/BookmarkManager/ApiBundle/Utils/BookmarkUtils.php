@@ -38,7 +38,7 @@ class BookmarkUtils
      * @throws BmAlreadyExistsException
      * @throws BmErrorResponseException
      */
-    public static function createBookmark($controller, $data)
+    public static function createBookmark($controller, $data, $verifyExists = true)
     {
         $bookmarkEntity = new Bookmark();
 
@@ -61,6 +61,7 @@ class BookmarkUtils
             }
 
             // Search if bookmark already exists.
+            if ($verifyExists) {
             $exists = $controller->getRepository(Bookmark::REPOSITORY_NAME)->findOneBy(
                 [
                     'owner' => $controller->getUser()->getId(),
@@ -73,6 +74,7 @@ class BookmarkUtils
                     'id' => $exists->getId()
                 ]);
             }
+        }
 
             $bookmarkEntity->setUrl($url);
 
@@ -112,8 +114,6 @@ class BookmarkUtils
                     }
                 }
             }
-
-            $controller->persistEntity($bookmarkEntity);
 
             return $bookmarkEntity;
         }

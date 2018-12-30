@@ -46,6 +46,7 @@ class WebsiteCrawler
 //                $this->getLogger()->info('[IMPORT] 404 for '.$data['url']);
             $bookmark->setCrawlerStatus(BookmarkCrawlerStatus::NO_RETRIEVE);
         } catch (CrawlerRetrieveDataException $e) {
+            echo $e->getTraceAsString();
 //                $this->getLogger()->info('[IMPORT] Impossible to retrieve the website content for '.$data['url']);
             $bookmark->setCrawlerStatus(BookmarkCrawlerStatus::NO_RETRIEVE);
         }
@@ -224,33 +225,40 @@ class WebsiteCrawler
             }
         }
 
-        // no plugin where used to get the website content or the plugin did not handle the content, so we use readability
-        if (strlen($bookmark->getContent()) == 0) {
-            $readability = new Readability($html, $bookmark->getUrl());
-            $success = $readability->init();
 
-            if ($success) {
-                $bookmark->setCrawlerStatus(BookmarkCrawlerStatus::RETRIEVED);
-                $bookmark->setContent($readability->getContent()->innerHTML);
-            } else {
-                // no content where found.
+        if ($bookmark->getCrawlerStatus() === BookmarkCrawlerStatus::NO_RETRIEVE) {
+            // do nothing for now, avoid overriding crawler status below.
+        }
+        // no plugin where used to get the website content or the plugin did not handle the content, so we use readability
+        else if (strlen($bookmark->getContent()) === 0) {
+            if (is_null($html)) {
                 $bookmark->setCrawlerStatus(BookmarkCrawlerStatus::CONTENT_BUG);
+            } else {
+                $readability = new Readability($html, $bookmark->getUrl());
+                $success = $readability->init();
+
+                if ($success) {
+                    $bookmark->setCrawlerStatus(BookmarkCrawlerStatus::RETRIEVED);
+                    $bookmark->setContent($readability->getContent()->innerHTML);
+                } else {
+                    // no content where found.
+                    $bookmark->setCrawlerStatus(BookmarkCrawlerStatus::CONTENT_BUG);
+                }
             }
         } else {
             // plugin was used, we set the crawler status if the plugin didn't do it
-            if ($bookmark->getCrawlerStatus() == null) {
+            if (is_null($bookmark->getCrawlerStatus())) {
                 $bookmark->setCrawlerStatus(BookmarkCrawlerStatus::RETRIEVED);
             }
         }
 
         // -- automatic tags
-        if ($user != null) {
+        if (!is_null($user)) {
             $tagsFound = $this->findTagsOnText($user->getTags()->toArray(), $bookmark->getContent());
             $bookmark->addTags($tagsFound);
         }
 
         if ($bookmark->getCrawlerStatus() == BookmarkCrawlerStatus::RETRIEVED) {
-
             // -- handle links on the content
             $bookmark->setContent($this->handleLinks($bookmark->getContent(), $bookmark->getUrl()));
 
@@ -569,6 +577,17 @@ class WebsiteCrawler
 
                 $newSrc = $this->getRealLink($currentSrc, $url);
                 $linkCrawler->getNode(0)->setAttribute('href', $newSrc);
+            }
+        );
+
+        // -- Iframe
+        $crawler->filter('iframe')->each(
+            function (Crawler $linkCrawler) use ($url) {
+
+                $currentSrc = $linkCrawler->getNode(0)->getAttribute('src');
+
+                $newSrc = $this->getRealLink($currentSrc, $url);
+                $linkCrawler->getNode(0)->setAttribute('src', $newSrc);
             }
         );
 

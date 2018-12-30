@@ -45,6 +45,7 @@ class CrawlerUtils
                 // handle 302
                 CURLOPT_FOLLOWLOCATION => true,
 
+                // return web page
                 CURLOPT_RETURNTRANSFER => true,
 
                 CURLOPT_HEADER         => false,
@@ -52,11 +53,15 @@ class CrawlerUtils
                 CURLOPT_ENCODING       => "gzip, deflate",
                 CURLOPT_AUTOREFERER    => true,
                 CURLOPT_CONNECTTIMEOUT => 120,
+                CURLOPT_TIMEOUT        => 120,
                 CURLOPT_MAXREDIRS      => 10,
 
                 CURL_HTTP_VERSION_1_1 => true,
 
                 CURLOPT_USERAGENT     => $userAgent,
+
+                // The --cacert option
+                // CURLOPT_CAINFO        => '~/Downloads/cacert-2018-12-05.pem',
 
                 //
                 // One of:
@@ -69,7 +74,11 @@ class CrawlerUtils
                 // or CURL_SSLVERSION_TLSv1_2 (6).
                 // Note: Setting it to 2 or 3 is very dangerous given the known vulnerabilities in SSLv2 and SSLv3.
                 // Tried to change value here to fix the `alert handshake failure` bug, didn't worked.
-                // CURLOPT_SSLVERSION    => 0
+                CURLOPT_SSLVERSION    => 0,
+
+                // Disabled SSL Cert checks. TODO: it allows man in the middle: http://nl3.php.net/manual/en/function.curl-setopt.php
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => false,
             );
 
             curl_setopt_array($curl, $options);
@@ -87,6 +96,10 @@ class CrawlerUtils
             // TODO: add curl_error results to the CrawlerRetrieveDataException thrown exception
             // print curl_error($curl);
             // die();
+
+            if (curl_error($curl)) {
+                $curlErrorMsg = curl_error($curl);
+            }
 
             curl_close($curl);
         }
@@ -113,11 +126,16 @@ class CrawlerUtils
                 $data = str_replace('charset='.$enc[1], 'charset='.$html_charset, $data);
             }
 
+            if (empty($data)) {
+                return NULL;
+            }
             return $data;
         } else {
             if ($httpCode == 404) {
                 throw new CrawlerNotFoundException("404 error", $httpCode);
             }
+
+            var_dump($curlErrorMsg);
             throw new CrawlerRetrieveDataException("Could not retrieve content", $httpCode);
         }
     }

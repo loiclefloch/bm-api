@@ -57,7 +57,7 @@ class BooksController extends BaseController {
     /**
      * Lists all Book entities for the given circle.
      *
-     * @Rest\Get("/")
+     * @Rest\Get("/circles/{circleId}/books")
      *
      * @ApiDoc(
      *     description="Get all the books",

@@ -11,7 +11,7 @@ use JMS\Serializer\Annotation as Serializer;
 
 /**
  * Circle
- * 
+ *
  * There are two type of circles:
  * - defaultCircle: can be linked to only one user. It is its default circle.
  * - not defaultCircle: can be shared with other users.
@@ -22,7 +22,7 @@ use JMS\Serializer\Annotation as Serializer;
  * - picture (cover)
  *
  * @ORM\Table(name="circles")
- * @ORM\Entity
+ * @ORM\Entity(repositoryClass="BookmarkManager\ApiBundle\Repository\CircleRepository")
  */
 class Circle
 {
@@ -90,13 +90,13 @@ class Circle
      *     User::GROUP_ME
      *  })
      */
-    protected $isDefaulCircle = false;
+    protected $isDefaultCircle = false;
 
     /**
      * @var array
      *
      * List of User who subscribed to the circle (including admins)
-     * 
+     *
      * @ORM\ManyToMany(targetEntity="User", inversedBy="circles")
      * @Groups({
      *     Circle::GROUP_MULTIPLE,
@@ -107,7 +107,7 @@ class Circle
 
     /**
      * @var array
-     * 
+     *
      * List of User who aministrate the circle.
      * They must be members too
      *
@@ -119,8 +119,8 @@ class Circle
      *     })
      */
     private $admins;
-    
-     /**
+
+    /**
      * @var [User]
      *
      * @ORM\ManyToOne(targetEntity="User", inversedBy="circles")
@@ -133,7 +133,7 @@ class Circle
      */
     protected $owner;
 
-     /**
+    /**
      * @var [Book] books
      * @ORM\OneToMany(targetEntity="Book", mappedBy="owner")
      * @Expose
@@ -202,6 +202,7 @@ class Circle
         if (!$this->haveMember($member)) {
             $this->members[] = $member;
         }
+
         return $this;
     }
 
@@ -258,6 +259,7 @@ class Circle
             $this->admins[] = $admin;
             $this->addMember($admin);
         }
+
         return $this;
     }
 
@@ -349,26 +351,26 @@ class Circle
     }
 
     /**
-     * Set isDefaulCircle
+     * Set isDefaultCircle
      *
-     * @param boolean $isDefaulCircle
+     * @param boolean $isDefaultCircle
      * @return Circle
      */
-    public function setIsDefaultCircle($isDefaulCircle)
+    public function setIsDefaultCircle($isDefaultCircle)
     {
-        $this->isDefaulCircle = $isDefaulCircle;
+        $this->isDefaultCircle = $isDefaultCircle;
 
         return $this;
     }
 
     /**
-     * Get isDefaulCircle
+     * Get isDefaultCircle
      *
-     * @return boolean 
+     * @return boolean
      */
-    public function getIsDefaulCircle()
+    public function getisDefaultCircle()
     {
-        return $this->isDefaulCircle;
+        return $this->isDefaultCircle;
     }
 
     /**

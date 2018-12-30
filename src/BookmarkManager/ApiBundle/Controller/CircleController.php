@@ -22,7 +22,8 @@ use FOS\RestBundle\Controller\Annotations as Rest;
  *
  * @Route("/circles")
  */
-class CircleController extends BaseController {
+class CircleController extends BaseController
+{
 
     /**
      * Lists all Circle entities.
@@ -38,14 +39,16 @@ class CircleController extends BaseController {
     {
         $user = $this->getUser();
 
-        // TODO: find all publics
-        $circles = $this->getRepository(Circle::REPOSITORY_NAME)->findAll();
+        $circles = $this->getRepository(Circle::REPOSITORY_NAME)->findAllPublicCircles();
+
+        // TODO: remove once the front handle own circle
+        $userCircle = $this->getRepository(Circle::REPOSITORY_NAME)->findUserOwnCircle($user);
 
         // TODO: paging
 
         return $this->successResponse(
             [
-                'circles' => $circles
+                'circles' => array_merge($circles, [$userCircle]),
             ],
             Response::HTTP_OK,
             Circle::GROUP_MULTIPLE
@@ -104,7 +107,7 @@ class CircleController extends BaseController {
      *      403="User has not ROLE_ADMIN"
      *     }
      * )
-     *  @ApiErrors({
+     * @ApiErrors({
      *      { 404, "User not found." },
      *      { 101, "Invalid {userId}" }
      * })
@@ -304,6 +307,7 @@ class CircleController extends BaseController {
 
         if ($editForm->isValid()) {
             $this->persistEntity($circleEntity);
+
             return $this->successResponse($circleEntity, Response::HTTP_OK);
         }
 
@@ -489,6 +493,10 @@ class CircleController extends BaseController {
         $userEntity = $this->getRepository(User::REPOSITORY_NAME)->findOneById($userId);
 
         if (!$circleEntity || !$userEntity) {
+            return $this->notFoundResponse();
+        }
+
+        if ($circleEntity->isDefaultCircle()) {
             return $this->notFoundResponse();
         }
 
